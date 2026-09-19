@@ -1,55 +1,28 @@
+import type { FC } from "react";
 import "./index.css";
-import { ALL_FORMATS, Input, UrlSource } from "mediabunny";
+import "@applemusic-like-lyrics/core/style.css";
 import { Composition, staticFile } from "remotion";
-import { Visualizer } from "./Visualizer/Main";
-import { visualizerCompositionSchema } from "./helpers/schema";
+import { calculatePlayerMetadata } from "./helpers/calculate-metadata";
+import { playerCompositionSchema } from "./helpers/schema";
+import { Player } from "./Player/Main";
 
-const FPS = 30;
-
-export const RemotionRoot: React.FC = () => {
+export const RemotionRoot: FC = () => {
   return (
     <>
       <Composition
-        id="Visualizer"
-        component={Visualizer}
-        width={1080}
+        id="AMLLPlayer"
+        component={Player}
+        width={1920}
         height={1080}
-        schema={visualizerCompositionSchema}
+        fps={30}
+        durationInFrames={300}
+        schema={playerCompositionSchema}
         defaultProps={{
-          // audio settings
           audioOffsetInSeconds: 0,
-          audioFileUrl: staticFile("demo-track.mp3"),
-          // song data
-          coverImageUrl: staticFile("demo-song-cover.jpeg"),
-          songName: "Sunset Render Deja Vu",
-          artistName: "Remotion",
-          textColor: "white",
-          // visualizer settings
-          visualizer: {
-            type: "spectrum" as const,
-            bassOverlay: true,
-            color: "#0b84f3",
-            linesToDisplay: 65,
-            mirrorWave: false,
-            numberOfSamples: "512" as const,
-          },
+          audioFileUrl: staticFile("OneLastKiss.flac"),
+          lyricsFileUrl: staticFile("OneLastKiss.ttml"),
         }}
-        // Determine the length of the video based on the duration of the audio file
-        calculateMetadata={async ({ props }) => {
-          const input = new Input({
-            source: new UrlSource(props.audioFileUrl),
-            formats: ALL_FORMATS,
-          });
-
-          const durationInSeconds = await input.computeDuration();
-
-          return {
-            durationInFrames: Math.floor(
-              (durationInSeconds - props.audioOffsetInSeconds) * FPS,
-            ),
-            fps: FPS,
-          };
-        }}
+        calculateMetadata={calculatePlayerMetadata}
       />
     </>
   );

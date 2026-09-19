@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+@theme {
+  --font-player:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC",
+    system-ui, sans-serif;
+}
