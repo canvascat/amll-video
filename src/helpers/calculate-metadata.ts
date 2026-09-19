@@ -1,38 +1,61 @@
 import { ALL_FORMATS, Input, UrlSource } from "mediabunny";
 import type { CalculateMetadataFunction } from "remotion";
+import { DEFAULT_FPS } from "../remotion/constants";
 import { loadLyricLines } from "./lyrics";
 import { tagsFromMediabunny, titleFromAudioUrl } from "./metadata";
 import type { PlayerCompositionProps } from "./schema";
 
-const FPS = 30;
-
 const isBlank = (value: string | undefined): boolean =>
   !value || value.trim() === "";
+
+const hasPositiveDuration = (value: number | undefined): value is number =>
+  value !== undefined && Number.isFinite(value) && value > 0;
 
 export const calculatePlayerMetadata: CalculateMetadataFunction<
   PlayerCompositionProps
 > = async ({ props, abortSignal }) => {
-  const input = new Input({
-    source: new UrlSource(props.audioFileUrl),
-    formats: ALL_FORMATS,
-  });
+  const hasLyrics = (props.lyricLines?.length ?? 0) > 0;
+  const hasDuration = hasPositiveDuration(props.durationInSeconds);
+  const hasIdentity =
+    !isBlank(props.songName) &&
+    !isBlank(props.artistName) &&
+    !isBlank(props.albumName) &&
+    props.coverImageUrl !== undefined;
 
-  const [durationInSeconds, metadataTags, lyricLines] = await Promise.all([
-    input.computeDuration(),
-    input.getMetadataTags().catch(() => ({})),
-    isBlank(props.lyricsFileUrl)
-      ? Promise.resolve([])
-      : loadLyricLines(props.lyricsFileUrl, abortSignal).catch(() => []),
-  ]);
+  let durationInSeconds = hasDuration ? props.durationInSeconds : undefined;
+  let tags = tagsFromMediabunny({});
+  let lyricLines = hasLyrics ? (props.lyricLines ?? []) : [];
 
-  const tags = tagsFromMediabunny(metadataTags);
+  if (!hasDuration || !hasIdentity) {
+    const input = new Input({
+      source: new UrlSource(props.audioFileUrl),
+      formats: ALL_FORMATS,
+    });
+    const [computedDuration, metadataTags] = await Promise.all([
+      hasDuration
+        ? Promise.resolve(durationInSeconds as number)
+        : input.computeDuration(),
+      hasIdentity
+        ? Promise.resolve({})
+        : input.getMetadataTags().catch(() => ({})),
+    ]);
+    durationInSeconds = computedDuration;
+    tags = tagsFromMediabunny(metadataTags);
+  }
 
-  if (!Number.isFinite(durationInSeconds) || durationInSeconds <= 0) {
+  if (!hasLyrics && !isBlank(props.lyricsFileUrl)) {
+    lyricLines = await loadLyricLines(props.lyricsFileUrl, abortSignal).catch(
+      () => [],
+    );
+  }
+
+  if (!hasPositiveDuration(durationInSeconds)) {
     throw new Error(`无法读取音频时长: ${props.audioFileUrl}`);
   }
 
   const resolved: PlayerCompositionProps = {
     ...props,
+    durationInSeconds,
     songName: isBlank(props.songName)
       ? tags.title || titleFromAudioUrl(props.audioFileUrl)
       : props.songName,
@@ -49,10 +72,10 @@ export const calculatePlayerMetadata: CalculateMetadataFunction<
   };
 
   return {
-    fps: FPS,
+    fps: DEFAULT_FPS,
     durationInFrames: Math.max(
       1,
-      Math.floor((durationInSeconds - props.audioOffsetInSeconds) * FPS),
+      Math.floor((durationInSeconds - props.audioOffsetInSeconds) * DEFAULT_FPS),
     ),
     props: resolved,
   };
