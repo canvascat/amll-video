@@ -6,6 +6,9 @@
   "repository": {},
   "license": "UNLICENSED",
   "private": true,
+  "engines": {
+    "node": ">=24 <25"
+  },
   "dependencies": {
     "@applemusic-like-lyrics/core": "^0.5.2",
     "@applemusic-like-lyrics/lyric": "^1.0.2",
@@ -32,7 +35,7 @@
   },
   "devDependencies": {
     "@remotion/eslint-config-flat": "4.0.526",
-    "@types/node": "^26.6.1",
+    "@types/node": "24",
     "@types/react": "19.2.7",
     "@types/web": "0.0.166",
     "eslint": "9.19.0",
