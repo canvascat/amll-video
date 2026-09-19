@@ -10,6 +10,8 @@ Studio 里预览；成片走导出 CLI：先渲染无声画面，再用 ffmpeg �
 nub install
 ```
 
+项目钉在 Node 24 LTS（`.node-version`）。用 `nub` 跑脚本会自动用这个版本，避免 PATH 上的 Node 22 / 26 混用。
+
 系统需要能调用 `ffmpeg`（没有的话会回退到 `nubx remotion ffmpeg`）。WebGL 背景建议本机装有 Chrome。
 
 把音频和歌词放到 `public/`（Studio 默认用 `OneLastKiss.flac` + `OneLastKiss.ttml`）。歌词支持 `.lrc` / `.ttml` / `.yrc` / `.qrc` / `.lys`。
