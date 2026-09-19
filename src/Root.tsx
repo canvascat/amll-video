@@ -5,16 +5,22 @@ import { Composition, staticFile } from "remotion";
 import { calculatePlayerMetadata } from "./helpers/calculate-metadata";
 import { playerCompositionSchema } from "./helpers/schema";
 import { Player } from "./Player/Main";
+import {
+  COMPOSITION_ID,
+  DEFAULT_FPS,
+  VIDEO_HEIGHT,
+  VIDEO_WIDTH,
+} from "./remotion/constants";
 
 export const RemotionRoot: FC = () => {
   return (
     <>
       <Composition
-        id="AMLLPlayer"
+        id={COMPOSITION_ID}
         component={Player}
-        width={1920}
-        height={1080}
-        fps={30}
+        width={VIDEO_WIDTH}
+        height={VIDEO_HEIGHT}
+        fps={DEFAULT_FPS}
         durationInFrames={300}
         schema={playerCompositionSchema}
         defaultProps={{

@@ -6,6 +6,7 @@ import {
   useDelayRender,
   useVideoConfig,
 } from "remotion";
+import { resolvePublicAsset } from "../helpers/public-asset";
 import type { PlayerCompositionProps } from "../helpers/schema";
 import { PlayerBackground } from "./Background";
 import { Cover } from "./Cover";
@@ -21,6 +22,8 @@ export const Player: React.FC<PlayerCompositionProps> = ({
   audioOffsetInSeconds,
 }) => {
   const { fps } = useVideoConfig();
+  const audioSrc = resolvePublicAsset(audioFileUrl);
+  const coverSrc = resolvePublicAsset(coverImageUrl);
   const audioOffsetInFrames = Math.round(audioOffsetInSeconds * fps);
   const { delayRender, continueRender } = useDelayRender();
   const [handle] = useState(() => delayRender("amll-player-ready"));
@@ -57,12 +60,12 @@ export const Player: React.FC<PlayerCompositionProps> = ({
     let cancelled = false;
 
     const wait = async () => {
-      if (coverImageUrl) {
+      if (coverSrc) {
         await new Promise<void>((resolve) => {
           const img = new Image();
           img.onload = () => resolve();
           img.onerror = () => resolve();
-          img.src = coverImageUrl;
+          img.src = coverSrc;
         });
       }
       await new Promise<void>((resolve) => {
@@ -82,7 +85,7 @@ export const Player: React.FC<PlayerCompositionProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [continueRender, coverImageUrl, handle]);
+  }, [continueRender, coverSrc, handle]);
 
   return (
     <AbsoluteFill className="bg-[#111]">
@@ -90,8 +93,8 @@ export const Player: React.FC<PlayerCompositionProps> = ({
         <div className="relative size-full font-player text-white">
           <div className="absolute inset-0 z-0">
             <PlayerBackground
-              audioSrc={audioFileUrl}
-              coverUrl={coverImageUrl}
+              audioSrc={audioSrc}
+              coverUrl={coverSrc}
               hasLyric={lyricLines.length > 0}
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent from-60% to-black/10" />
@@ -102,7 +105,7 @@ export const Player: React.FC<PlayerCompositionProps> = ({
                 ref={coverRef}
                 className="relative size-[min(50vh,38vw)]"
               >
-                <Cover coverUrl={coverImageUrl} />
+                <Cover coverUrl={coverSrc} />
               </div>
               <MusicInfo
                 className="mt-[1.75em] w-[min(50vh,38vw)]"
@@ -118,7 +121,7 @@ export const Player: React.FC<PlayerCompositionProps> = ({
             </div>
           </div>
         </div>
-        <Audio src={audioFileUrl} />
+        <Audio src={audioSrc} />
       </Sequence>
     </AbsoluteFill>
   );

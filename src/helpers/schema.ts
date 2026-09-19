@@ -9,6 +9,7 @@ export const playerCompositionSchema = z.object({
   songName: z.string().optional(),
   artistName: z.string().optional(),
   albumName: z.string().optional(),
+  durationInSeconds: z.number().optional(),
   lyricLines: z.array(z.any()).optional(),
 });
 
