@@ -1,83 +1,89 @@
-# Remotion Music Visualization Template
+# rmv
 
-<div class='grid' markdown>
-  <img alt='Spectrum Visualizer' width='300px' src='https://github.com/user-attachments/assets/74095cfd-5507-4875-9e55-2b7f66c72287' />
-  <img alt='Waveform Visualizer' width='300px' src='https://github.com/user-attachments/assets/601b760c-952b-4fe4-90f4-527c9e2ad8b3' />
-</div>
+用 Remotion 把一首歌做成 1920×1080 的 Apple Music-like 歌词视频：动态 Mesh 背景、左侧封面与曲目信息、右侧滚动歌词。
 
-This template allows you to create stunning music visualization videos. Perfect for sharing song previews, album teasers, or music snippets on social media with beautiful visual effects synchronized to your audio.
+Studio 里预览；成片走导出 CLI：先渲染无声画面，再用 ffmpeg 把原音轨无损 mux 进 MKV。
 
-## Commands
-
-**Install Dependencies**
+## 准备
 
 ```console
 nub install
 ```
 
-**Start Preview**
+系统需要能调用 `ffmpeg`（没有的话会回退到 `nubx remotion ffmpeg`）。WebGL 背景建议本机装有 Chrome。
+
+把音频和歌词放到 `public/`（Studio 默认用 `OneLastKiss.flac` + `OneLastKiss.ttml`）。歌词支持 `.lrc` / `.ttml` / `.yrc` / `.qrc` / `.lys`。
+
+## 预览
 
 ```console
-npx remotion studio
+nub run dev
 ```
 
-**Render video**
+打开 Remotion Studio，Composition 为 `AMLLPlayer`。未填写的歌名、歌手、专辑、封面会从音频标签读取；时长由音频决定。
+
+用指定文件预览（会建临时 `public` 目录，不改仓库里的 `public/`）：
 
 ```console
-nubx remotion render
+nub run export -- --audio <音频> --lyric <歌词> --preview
 ```
 
-**Upgrade Remotion**
+## 导出
 
 ```console
+nub run export -- --audio <音频> --lyric <歌词>
+```
+
+等价于：
+
+```console
+nub src/export/cli.ts --audio <音频> --lyric <歌词>
+```
+
+默认输出 `out/<歌名>.mkv`。可选参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `--cover` | 封面图；缺省时从音频标签读取 |
+| `--title` / `--artist` / `--album` | 覆盖标签里的曲目信息 |
+| `--out` | 输出路径；若写成 `.mp4` 会改成 `.mkv` |
+| `--fps` | 帧率，默认 30 |
+| `--frames` | 只渲染部分帧，例如 `0-2`（调试） |
+| `--preview` | 打开 Studio，不导出 |
+| `-h` | 打印帮助 |
+
+## 运行流程
+
+```text
+音频 + 歌词
+    → 读标签 / 时长 / 封面，解析歌词
+    → 拷到临时 public 目录，生成 Composition props
+    → Remotion 渲染无声 H.264（--muted，--gl=angle）
+    → ffmpeg -c:v copy -c:a copy -shortest
+    → out/<歌名>.mkv
+```
+
+画面由 Remotion 编码；音轨是原文件拷贝，FLAC / WAV 等不会被重编码。临时目录在结束后删除。
+
+相关代码：
+
+- `src/export/cli.ts`：入口
+- `src/export/assets.ts`：准备素材和 props
+- `src/export/render.ts`：Studio 预览 / Remotion 渲染
+- `src/export/mux.ts`：ffmpeg 合成
+- `src/Player/`：成片画面
+
+## 其他命令
+
+```console
+nub run lint
 nubx remotion upgrade
 ```
-
-## Customization
-
-You can customize your music visualization:
-
-- Choose between spectrum or waveform visualizer
-- Customize colors, wave patterns, and visual parameters
-- Add your album artwork, song name, and artist name
-- Adjust audio timing and visualization settings
-
-All parameters can be modified in `src/Root.tsx` or directly in the Studio sidebar.
-
-## How do I create my video?
-
-1. Replace the audio file in the `public` folder with your music track
-2. Update the cover artwork in the `public` folder
-3. Adjust the song and artist information
-4. Customize the visualizer settings to match your music style
-
-Then render your video by running clicking "Render" button in Remotion Studio.
-
-Check out the [Remotion docs](/docs/render/) for more rendering options.
 
 ## Docs
 
-Get started with Remotion by reading the [fundamentals page](https://www.remotion.dev/docs/the-fundamentals).
-
-## Help
-
-We provide help [on our Discord server](https://discord.gg/6VzzNDwUwV).
-
-## Issues
-
-Found an issue with Remotion? Upgrade Remotion to receive fixes:
-
-```
-nubx remotion upgrade
-```
-
-Didn't help? [File an issue here](https://github.com/remotion-dev/remotion/issues/new).
-
-## Contributing
-
-The source of this template is in the [Remotion Monorepo](https://github.com/remotion-dev/remotion/tree/main/packages/template-music-visualization).  
-Don't send pull requests here, this is only a mirror.
+Remotion：[The fundamentals](https://www.remotion.dev/docs/the-fundamentals)。问题可到 [Discord](https://discord.gg/6VzzNDwUwV) 或 [GitHub Issues](https://github.com/remotion-dev/remotion/issues/new)。
 
 ## License
 
-Note that for some entities a company license is needed. Read [the terms here](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md).
+部分主体需要公司许可，见 [Remotion LICENSE](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md)。
