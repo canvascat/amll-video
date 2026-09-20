@@ -2,8 +2,6 @@
   "name": "rmv",
   "version": "1.0.0",
   "description": "My Remotion video",
-  "author": "Igor Samokhovets",
-  "repository": {},
   "license": "UNLICENSED",
   "private": true,
   "engines": {
@@ -48,8 +46,5 @@
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc"
-  },
-  "sideEffects": [
-    "*.css"
-  ]
+  }
 }
