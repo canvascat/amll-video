@@ -14,3 +14,6 @@ Config.setOverwriteOutput(true);
 Config.setChromeMode("headless-shell");
 Config.setChromiumOpenGlRenderer("angle");
 Config.overrideBundlerConfig(bundlerOverride);
+Config.setDefaultEditor('cursor');
+Config.setDefaultCodingAgent('cursor');
+Config.setPublicLicenseKey('free-license');
