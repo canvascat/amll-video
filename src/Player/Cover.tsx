@@ -7,6 +7,7 @@ import {
   type HTMLProps,
 } from "react";
 import { Img } from "remotion";
+import { cn } from "../lib/utils";
 
 export type CoverProps = {
   coverUrl?: string;
@@ -37,7 +38,10 @@ export const Cover = forwardRef<HTMLDivElement, CoverProps>(
 
     return (
       <div
-        className={`aspect-square size-full drop-shadow-[rgba(0,0,0,0.19)_0_1em_1.2em] ${className ?? ""}`}
+        className={cn(
+          "aspect-square size-full drop-shadow-[rgba(0,0,0,0.19)_0_1em_1.2em]",
+          className,
+        )}
         ref={(node) => {
           frameRef.current = node;
           if (typeof ref === "function") {
@@ -58,13 +62,7 @@ export const Cover = forwardRef<HTMLDivElement, CoverProps>(
               name="Cover"
               src={coverUrl}
               onError={() => setFailedSrc(coverUrl)}
-              style={{
-                display: "block",
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                objectPosition: "center",
-              }}
+              className="block size-full object-cover object-center"
             />
           ) : null}
         </Squircle>
