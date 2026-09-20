@@ -6,6 +6,7 @@ import {
   useState,
   type HTMLProps,
 } from "react";
+import { Img } from "remotion";
 
 export type CoverProps = {
   coverUrl?: string;
@@ -15,6 +16,8 @@ export const Cover = forwardRef<HTMLDivElement, CoverProps>(
   ({ coverUrl, className, ...rest }, ref) => {
     const frameRef = useRef<HTMLDivElement>(null);
     const [cornerRadius, setCornerRadius] = useState(20);
+    const [failedSrc, setFailedSrc] = useState<string | null>(null);
+    const showCover = Boolean(coverUrl) && failedSrc !== coverUrl;
 
     useLayoutEffect(() => {
       const frameEl = frameRef.current;
@@ -48,14 +51,22 @@ export const Cover = forwardRef<HTMLDivElement, CoverProps>(
         <Squircle
           cornerRadius={cornerRadius}
           cornerSmoothing={0.7}
-          className="size-full bg-[#111] bg-cover bg-center"
+          className="size-full overflow-hidden bg-[#111]"
         >
-          <div
-            className="size-full bg-[#111] bg-cover bg-center"
-            style={{
-              backgroundImage: coverUrl ? `url(${coverUrl})` : undefined,
-            }}
-          />
+          {showCover && coverUrl ? (
+            <Img
+              name="Cover"
+              src={coverUrl}
+              onError={() => setFailedSrc(coverUrl)}
+              style={{
+                display: "block",
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "center",
+              }}
+            />
+          ) : null}
         </Squircle>
       </div>
     );

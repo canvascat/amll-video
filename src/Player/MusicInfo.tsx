@@ -1,20 +1,51 @@
 import type { FC } from "react";
+import { Interactive } from "remotion";
 
 export const MusicInfo: FC<{
   songName: string;
   artistName: string;
+  albumName?: string;
   className?: string;
-}> = ({ songName, artistName, className }) => {
+}> = ({ songName, artistName, albumName = "", className }) => {
+  const artistLine = [artistName, albumName]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(" · ");
   return (
-    <div
-      className={`min-w-0 text-white text-[length:max(2vh,1em)] leading-[1.25em] ${className ?? ""}`}
-    >
-      <div className="min-w-0 truncate font-medium tracking-[0.4px] opacity-90">
+    <div className={className} style={{ minWidth: 0 }}>
+      <Interactive.Div
+        name="Song name"
+        style={{
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          color: "white",
+          fontSize: "max(2vh, 1em)",
+          lineHeight: "1.25em",
+          fontWeight: 500,
+          letterSpacing: "0.4px",
+          opacity: 0.9,
+        }}
+      >
         {songName}
-      </div>
-      <div className="truncate font-normal tracking-[0.4px] opacity-45">
-        {artistName}
-      </div>
+      </Interactive.Div>
+      <Interactive.Div
+        name="Artist"
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          color: "white",
+          fontSize: "max(2vh, 1em)",
+          lineHeight: "1.25em",
+          fontWeight: 400,
+          letterSpacing: "0.4px",
+          opacity: 0.45,
+        }}
+      >
+        {artistLine}
+      </Interactive.Div>
     </div>
   );
 };
