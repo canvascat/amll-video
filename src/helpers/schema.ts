@@ -1,7 +1,7 @@
 import type { LyricLine } from "@applemusic-like-lyrics/core";
 import { z } from "zod";
 
-export const playerCompositionSchema = z.object({
+export const trackSchema = z.object({
   audioFileUrl: z.string(),
   lyricsFileUrl: z.string(),
   audioOffsetInSeconds: z.number().min(0),
@@ -13,9 +13,14 @@ export const playerCompositionSchema = z.object({
   lyricLines: z.array(z.any()).optional(),
 });
 
-export type PlayerCompositionProps = Omit<
-  z.infer<typeof playerCompositionSchema>,
-  "lyricLines"
-> & {
+export const playerCompositionSchema = z.object({
+  tracks: z.array(trackSchema).min(1),
+});
+
+export type TrackProps = Omit<z.infer<typeof trackSchema>, "lyricLines"> & {
   lyricLines?: LyricLine[];
+};
+
+export type PlayerCompositionProps = {
+  tracks: TrackProps[];
 };

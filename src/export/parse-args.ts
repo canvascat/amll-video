@@ -12,8 +12,8 @@ export class UsageError extends Error {
 }
 
 export type ExportArgs = {
-  audio: string;
-  lyric: string;
+  audio?: string;
+  lyric?: string;
   cover?: string;
   title?: string;
   artist?: string;
@@ -24,9 +24,12 @@ export type ExportArgs = {
   preview?: boolean;
 };
 
-export const USAGE = `用法: nub run export -- --audio <音频> --lyric <歌词> [选项]
+export const USAGE = `用法: nub run export -- [选项]
 
-必填:
+默认:
+  不传 --audio / --lyric 时，导出 Studio 默认曲目列表（public/ + defaultProps.tracks）
+
+单曲:
   --audio   音频文件路径（mp3 / wav / flac / m4a 等）
   --lyric   歌词文件路径（.lrc / .ttml / .yrc / .qrc / .lys）
 
@@ -85,11 +88,8 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     throw new UsageError(USAGE, 0);
   }
 
-  if (!values.audio) {
-    throw new UsageError(`缺少 --audio\n\n${USAGE}`);
-  }
-  if (!values.lyric) {
-    throw new UsageError(`缺少 --lyric\n\n${USAGE}`);
+  if (Boolean(values.audio) !== Boolean(values.lyric)) {
+    throw new UsageError(`--audio 与 --lyric 需要同时提供\n\n${USAGE}`);
   }
 
   const fps = values.fps === undefined ? DEFAULT_FPS : Number(values.fps);

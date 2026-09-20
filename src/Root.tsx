@@ -1,8 +1,9 @@
 import type { FC } from "react";
 import "./index.css";
 import "@applemusic-like-lyrics/core/style.css";
-import { Composition, staticFile } from "remotion";
+import { Composition } from "remotion";
 import { calculatePlayerMetadata } from "./helpers/calculate-metadata";
+import { defaultPlayerProps } from "./helpers/default-props";
 import { playerCompositionSchema } from "./helpers/schema";
 import { Player } from "./Player/Main";
 import {
@@ -23,11 +24,7 @@ export const RemotionRoot: FC = () => {
         fps={DEFAULT_FPS}
         durationInFrames={300}
         schema={playerCompositionSchema}
-        defaultProps={{
-          audioOffsetInSeconds: 0,
-          audioFileUrl: staticFile("OneLastKiss.flac"),
-          lyricsFileUrl: staticFile("OneLastKiss.ttml"),
-        }}
+        defaultProps={defaultPlayerProps}
         calculateMetadata={calculatePlayerMetadata}
       />
     </>
