@@ -18,6 +18,7 @@ export const Player: React.FC<PlayerCompositionProps> = ({
   coverImageUrl = "",
   songName = "",
   artistName = "",
+  albumName = "",
   lyricLines = [],
   audioOffsetInSeconds,
 }) => {
@@ -58,34 +59,21 @@ export const Player: React.FC<PlayerCompositionProps> = ({
 
   useEffect(() => {
     let cancelled = false;
-
-    const wait = async () => {
-      if (coverSrc) {
-        await new Promise<void>((resolve) => {
-          const img = new Image();
-          img.onload = () => resolve();
-          img.onerror = () => resolve();
-          img.src = coverSrc;
-        });
-      }
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      innerId = requestAnimationFrame(() => {
+        if (!cancelled) {
+          continueRender(handle);
+        }
       });
-      if (!cancelled) {
-        continueRender(handle);
-      }
-    };
-
-    wait().catch(() => {
-      if (!cancelled) {
-        continueRender(handle);
-      }
     });
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
     };
-  }, [continueRender, coverSrc, handle]);
+  }, [continueRender, handle]);
 
   return (
     <AbsoluteFill className="bg-[#111]">
@@ -111,6 +99,7 @@ export const Player: React.FC<PlayerCompositionProps> = ({
                 className="mt-[1.75em] w-[min(50vh,38vw)]"
                 songName={songName}
                 artistName={artistName}
+                albumName={albumName}
               />
             </div>
             <div
