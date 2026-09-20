@@ -1,6 +1,12 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 
+export type ConcatAudioInput = {
+  path: string;
+  offsetInSeconds: number;
+  durationInSeconds: number;
+};
+
 export function buildMuxArgs(
   videoPath: string,
   audioPath: string,
@@ -21,6 +27,33 @@ export function buildMuxArgs(
     "-c:a",
     "copy",
     "-shortest",
+    outputPath,
+  ];
+}
+
+export function buildConcatAudioArgs(
+  inputs: ConcatAudioInput[],
+  outputPath: string,
+): string[] {
+  const ffmpegInputs = inputs.flatMap((input) => ["-i", input.path]);
+  const filters = inputs.map((input, index) => {
+    const playable = Math.max(
+      0.001,
+      input.durationInSeconds - input.offsetInSeconds,
+    );
+    return `[${index}:a]atrim=start=${input.offsetInSeconds}:duration=${playable},asetpts=PTS-STARTPTS,aformat=sample_rates=48000:channel_layouts=stereo[a${index}]`;
+  });
+  const concatIn = inputs.map((_, index) => `[a${index}]`).join("");
+  const filter = `${filters.join(";")};${concatIn}concat=n=${inputs.length}:v=0:a=1[a]`;
+  return [
+    "-y",
+    ...ffmpegInputs,
+    "-filter_complex",
+    filter,
+    "-map",
+    "[a]",
+    "-c:a",
+    "flac",
     outputPath,
   ];
 }
@@ -47,12 +80,7 @@ function runCommand(command: string, args: string[]): Promise<void> {
   });
 }
 
-export async function muxOriginalAudio(
-  videoPath: string,
-  audioPath: string,
-  outputPath: string,
-): Promise<void> {
-  const args = buildMuxArgs(videoPath, audioPath, outputPath);
+async function runFfmpeg(args: string[]): Promise<void> {
   try {
     await runCommand("ffmpeg", args);
   } catch (error) {
@@ -70,4 +98,22 @@ export async function muxOriginalAudio(
     }
     throw error;
   }
+}
+
+export async function concatAudioToFlac(
+  inputs: ConcatAudioInput[],
+  outputPath: string,
+): Promise<void> {
+  if (inputs.length < 2) {
+    throw new Error("拼接音轨至少需要两首歌");
+  }
+  await runFfmpeg(buildConcatAudioArgs(inputs, outputPath));
+}
+
+export async function muxOriginalAudio(
+  videoPath: string,
+  audioPath: string,
+  outputPath: string,
+): Promise<void> {
+  await runFfmpeg(buildMuxArgs(videoPath, audioPath, outputPath));
 }

@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { COMPOSITION_ID } from "../remotion/constants";
 import { ensureOutputDir, prepareExportJob } from "./assets";
-import { muxOriginalAudio } from "./mux";
+import { concatAudioToFlac, muxOriginalAudio } from "./mux";
 import type { ExportArgs } from "./parse-args";
 
 function resolveBrowserExecutable(): string | undefined {
@@ -53,6 +53,12 @@ function runRemotion(args: string[]): Promise<void> {
 }
 
 export async function previewStudio(args: ExportArgs): Promise<void> {
+  if (!args.audio) {
+    console.log("正在启动 Remotion Studio 预览默认曲目列表");
+    await runRemotion(["studio", remotionEntry()]);
+    return;
+  }
+
   const job = await prepareExportJob(args);
   const propsPath = path.join(job.publicDir, "input-props.json");
   await writeFile(propsPath, JSON.stringify(job.inputProps));
@@ -67,7 +73,9 @@ export async function previewStudio(args: ExportArgs): Promise<void> {
       `--public-dir=${job.publicDir}`,
     ]);
   } finally {
-    await rm(job.publicDir, { recursive: true, force: true });
+    if (job.ownsPublicDir) {
+      await rm(job.publicDir, { recursive: true, force: true });
+    }
   }
 }
 
@@ -77,7 +85,7 @@ export async function exportVideo(args: ExportArgs): Promise<string> {
   await ensureOutputDir(outputLocation);
   const workDir = await mkdtemp(path.join(os.tmpdir(), "rmv-render-"));
   const silentVideoPath = path.join(workDir, "video-only.mp4");
-  const propsPath = path.join(job.publicDir, "input-props.json");
+  const propsPath = path.join(workDir, "input-props.json");
   await writeFile(propsPath, JSON.stringify(job.inputProps));
 
   const remotionArgs = [
@@ -86,7 +94,7 @@ export async function exportVideo(args: ExportArgs): Promise<string> {
     COMPOSITION_ID,
     silentVideoPath,
     `--props=${propsPath}`,
-    `--public-dir=${job.publicDir}`,
+    ...(job.ownsPublicDir ? [`--public-dir=${job.publicDir}`] : []),
     "--muted",
     "--codec=h264",
     "--concurrency=1",
@@ -105,19 +113,37 @@ export async function exportVideo(args: ExportArgs): Promise<string> {
     remotionArgs.push(`--browser-executable=${browserExecutable}`);
   }
 
+  const trackLabel =
+    job.sourceAudios.length > 1
+      ? `${job.title} 等 ${job.sourceAudios.length} 首`
+      : job.title;
+
   try {
     console.log(
-      `正在渲染无声画面：《${job.title}》（${job.durationInFrames} 帧）`,
+      `正在渲染无声画面：《${trackLabel}》（${job.durationInFrames} 帧）`,
     );
     await runRemotion(remotionArgs);
-    console.log("正在无损合成原音轨…");
-    await muxOriginalAudio(
-      silentVideoPath,
-      job.sourceAudioPath,
-      outputLocation,
+
+    let audioPath = job.sourceAudios[0]?.path;
+    if (!audioPath) {
+      throw new Error("没有可合成的音轨");
+    }
+    if (job.sourceAudios.length > 1) {
+      console.log("正在拼接原音轨…");
+      audioPath = path.join(workDir, "playlist.flac");
+      await concatAudioToFlac(job.sourceAudios, audioPath);
+    }
+
+    console.log(
+      job.sourceAudios.length > 1
+        ? "正在合成拼接后的音轨…"
+        : "正在无损合成原音轨…",
     );
+    await muxOriginalAudio(silentVideoPath, audioPath, outputLocation);
   } finally {
-    await rm(job.publicDir, { recursive: true, force: true });
+    if (job.ownsPublicDir) {
+      await rm(job.publicDir, { recursive: true, force: true });
+    }
     await rm(workDir, { recursive: true, force: true });
   }
 
