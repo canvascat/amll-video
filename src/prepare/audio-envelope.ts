@@ -2,7 +2,8 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 
 export const ENVELOPE_HOP_MS = 50;
-const SAMPLE_RATE = 1000;
+const SAMPLE_RATE = 16_000;
+const VOCAL_BANDPASS = "highpass=f=200,lowpass=f=4000";
 
 function remotionBin(): string {
   return path.join(process.cwd(), "node_modules", ".bin", "remotion");
@@ -72,6 +73,8 @@ export async function readRmsEnvelope(options: {
     options.audioPath,
     "-ac",
     "1",
+    "-af",
+    VOCAL_BANDPASS,
     "-ar",
     String(SAMPLE_RATE),
     "-f",

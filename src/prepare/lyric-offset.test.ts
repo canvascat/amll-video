@@ -40,6 +40,38 @@ test("歌词时间轴整体偏晚时，估出负向偏移", () => {
   assert.equal(estimated.offsetMs, -2000);
 });
 
+test("歌词已落在人声上时，不因后面更响而偏移", () => {
+  const hopMs = 50;
+  const envelope = new Array(600).fill(0.05);
+  for (const peakMs of [5000, 8000, 12000]) {
+    envelope[Math.round(peakMs / hopMs)] = 0.7;
+  }
+  for (const peakMs of [5000 + 8700, 8000 + 8700, 12000 + 8700]) {
+    envelope[Math.round(peakMs / hopMs)] = 1;
+  }
+  const estimated = estimateLyricOffsetMs({
+    lyricTimesMs: [5000, 8000, 12000],
+    envelope,
+    hopMs,
+  });
+  assert.equal(estimated, null);
+});
+
+test("歌词落在前奏无人声处时，估出正向偏移", () => {
+  const hopMs = 50;
+  const envelope = new Array(400).fill(0.05);
+  for (const peakMs of [8000, 11000, 15000]) {
+    envelope[Math.round(peakMs / hopMs)] = 1;
+  }
+  const estimated = estimateLyricOffsetMs({
+    lyricTimesMs: [5000, 8000, 12000],
+    envelope,
+    hopMs,
+  });
+  assert.ok(estimated);
+  assert.equal(estimated.offsetMs, 3000);
+});
+
 test("包络没有对应峰值时不套用偏移", () => {
   const estimated = estimateLyricOffsetMs({
     lyricTimesMs: [1000, 2000, 3000],

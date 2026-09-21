@@ -5,6 +5,8 @@ import { isLyricCreditLine } from "./lyric-quality";
 const DEFAULT_MAX_OFFSET_MS = 15_000;
 const MIN_CONFIDENCE = 0.35;
 const MIN_HITS = 3;
+const MIN_IMPROVE_OVER_ZERO = 1.2;
+const SCORE_TIE_EPS = 1e-6;
 
 export function lyricOnsetTimesMs(
   lines: readonly LyricLine[],
@@ -32,11 +34,12 @@ export function estimateLyricOffsetMs(options: {
   hopMs: number;
   maxOffsetMs?: number;
 }): { offsetMs: number; confidence: number } | null {
-  const { lyricTimesMs, envelope, hopMs } = options;
-  if (lyricTimesMs.length < MIN_HITS || envelope.length < 4 || hopMs <= 0) {
+  const { lyricTimesMs, hopMs } = options;
+  if (lyricTimesMs.length < MIN_HITS || options.envelope.length < 4 || hopMs <= 0) {
     return null;
   }
 
+  const envelope = toVocalActivity(options.envelope);
   const maxOffsetMs = options.maxOffsetMs ?? DEFAULT_MAX_OFFSET_MS;
   const scores: number[] = [];
   let bestOffset = 0;
@@ -48,13 +51,18 @@ export function estimateLyricOffsetMs(options: {
       continue;
     }
     scores.push(scored.score);
-    if (scored.score > bestScore) {
+    if (isBetterOffset(scored.score, offsetMs, bestScore, bestOffset)) {
       bestScore = scored.score;
       bestOffset = offsetMs;
     }
   }
 
   if (!scores.length || bestScore <= 0) {
+    return null;
+  }
+
+  const zero = scoreOffset(lyricTimesMs, envelope, hopMs, 0);
+  if (bestOffset !== 0 && bestScore < zero.score * MIN_IMPROVE_OVER_ZERO) {
     return null;
   }
 
@@ -65,6 +73,36 @@ export function estimateLyricOffsetMs(options: {
     return null;
   }
   return { offsetMs: bestOffset, confidence };
+}
+
+function toVocalActivity(envelope: readonly number[]): number[] {
+  if (!envelope.length) {
+    return [];
+  }
+  const sorted = [...envelope].sort((left, right) => left - right);
+  const at = (quantile: number) =>
+    sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * quantile))] ?? 0;
+  const floor = at(0.35);
+  const peak = Math.max(at(0.9), floor);
+  const span = Math.max(peak - floor, 1e-9);
+  return envelope.map((value) =>
+    Math.max(0, Math.min(1, (value - floor) / span)),
+  );
+}
+
+function isBetterOffset(
+  score: number,
+  offsetMs: number,
+  bestScore: number,
+  bestOffset: number,
+): boolean {
+  if (score > bestScore + SCORE_TIE_EPS) {
+    return true;
+  }
+  return (
+    Math.abs(score - bestScore) <= SCORE_TIE_EPS &&
+    Math.abs(offsetMs) < Math.abs(bestOffset)
+  );
 }
 
 function scoreOffset(
