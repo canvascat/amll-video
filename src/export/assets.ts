@@ -1,10 +1,10 @@
 import type { LyricLine } from "@applemusic-like-lyrics/core";
 import { copyFile, mkdir, mkdtemp, readFile } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { detectLyricFormat, parseLyricText } from "../helpers/lyrics";
 import type { PlayerCompositionProps, TrackProps } from "../helpers/schema";
 import { trackDurationInFrames } from "../helpers/track-duration";
+import { ensureProjectTmpDir } from "../lib/project-tmp";
 import { loadPreparedConfig, type ConfigTrack } from "./load-config";
 import { collapseSharedSourceAudios, type ConcatAudioInput } from "./mux";
 import type { ExportArgs } from "./parse-args";
@@ -164,7 +164,9 @@ export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {
   }
 
   const loaded = await loadPreparedConfig(args.config);
-  const publicDir = await mkdtemp(path.join(os.tmpdir(), "rmv-export-"));
+  const publicDir = await mkdtemp(
+    path.join(await ensureProjectTmpDir(), "rmv-export-"),
+  );
   const cache = createAssetCache();
   const materialized: MaterializedTrack[] = [];
   for (const [index, track] of loaded.tracks.entries()) {
