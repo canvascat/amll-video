@@ -124,14 +124,19 @@ export async function exportVideo(args: ExportArgs): Promise<string> {
     );
     await runRemotion(remotionArgs);
 
-    let audioPath = job.sourceAudios[0]?.path;
-    if (!audioPath) {
+    let audio = job.sourceAudios[0];
+    if (!audio) {
       throw new Error("没有可合成的音轨");
     }
     if (job.sourceAudios.length > 1) {
       console.log("正在拼接原音轨…");
-      audioPath = path.join(workDir, "playlist.flac");
-      await concatAudioToFlac(job.sourceAudios, audioPath);
+      const playlistPath = path.join(workDir, "playlist.flac");
+      await concatAudioToFlac(job.sourceAudios, playlistPath);
+      audio = {
+        path: playlistPath,
+        offsetInSeconds: 0,
+        durationInSeconds: 0,
+      };
     }
 
     console.log(
@@ -139,7 +144,7 @@ export async function exportVideo(args: ExportArgs): Promise<string> {
         ? "正在合成拼接后的音轨…"
         : "正在无损合成原音轨…",
     );
-    await muxOriginalAudio(silentVideoPath, audioPath, outputLocation);
+    await muxOriginalAudio(silentVideoPath, audio, outputLocation);
   } finally {
     if (job.ownsPublicDir) {
       await rm(job.publicDir, { recursive: true, force: true });
