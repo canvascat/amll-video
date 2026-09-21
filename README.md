@@ -22,38 +22,39 @@ nub install
 nub run prepare -- --audio <音频或CUE>
 ```
 
+预览和导出都只需要这份配置文件。
+
 ## 预览
+
+```console
+nub run export -- <配置.json> --preview
+```
+
+会建临时 `public` 目录，不改仓库里的 `public/`。不传配置时打开默认曲目：
 
 ```console
 nub run dev
 ```
 
-打开 Remotion Studio，Composition 为 `AMLLPlayer`。未填写的歌名、歌手、专辑、封面会从音频标签读取；时长由音频决定。
-
-用指定文件预览（会建临时 `public` 目录，不改仓库里的 `public/`）：
-
-```console
-nub run export -- --audio <音频> --lyric <歌词> --preview
-```
+打开 Remotion Studio，Composition 为 `AMLLPlayer`。歌名、歌手、专辑、封面和时长都来自配置文件；缺时长时才从音频读取，用来决定成片长度。
 
 ## 导出
 
 ```console
-nub run export -- --audio <音频> --lyric <歌词>
+nub run export -- <配置.json>
 ```
 
 等价于：
 
 ```console
-nub src/export/cli.ts --audio <音频> --lyric <歌词>
+nub src/export/cli.ts --config <配置.json>
 ```
 
-默认输出 `out/<歌名>.mkv`。可选参数：
+默认输出 `out/<歌名或专辑名>.mkv`。可选参数：
 
 | 参数 | 说明 |
 | --- | --- |
-| `--cover` | 封面图；缺省时从音频标签读取 |
-| `--title` / `--artist` / `--album` | 覆盖标签里的曲目信息 |
+| `--config` | 配置文件；也可直接作为位置参数 |
 | `--out` | 输出路径；若写成 `.mp4` 会改成 `.mkv` |
 | `--fps` | 帧率，默认 30 |
 | `--frames` | 只渲染部分帧，例如 `0-2`（调试） |
@@ -63,12 +64,12 @@ nub src/export/cli.ts --audio <音频> --lyric <歌词>
 ## 运行流程
 
 ```text
-音频 + 歌词
-    → 读标签 / 时长 / 封面，解析歌词
+配置 json（单曲或专辑）
+    → 相对配置目录解析音频 / 歌词 / 封面
     → 拷到临时 public 目录，生成 Composition props
     → Remotion 渲染无声 H.264（--muted，--gl=angle）
     → ffmpeg -c:v copy -c:a copy -shortest
-    → out/<歌名>.mkv
+    → out/<歌名或专辑名>.mkv
 ```
 
 画面由 Remotion 编码；音轨是原文件拷贝，FLAC / WAV 等不会被重编码。临时目录在结束后删除。
@@ -77,6 +78,7 @@ nub src/export/cli.ts --audio <音频> --lyric <歌词>
 
 - `src/prepare/`：联网匹配歌词 / 封面 / 歌信并写出材料包（[文档](src/prepare/README.md)）
 - `src/export/cli.ts`：入口
+- `src/export/load-config.ts`：读备料 json 并解析相对路径
 - `src/export/assets.ts`：准备素材和 props
 - `src/export/render.ts`：Studio 预览 / Remotion 渲染
 - `src/export/mux.ts`：ffmpeg 合成

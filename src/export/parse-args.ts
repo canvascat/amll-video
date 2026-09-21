@@ -12,72 +12,54 @@ export class UsageError extends Error {
 }
 
 export type ExportArgs = {
-  audio?: string;
-  lyric?: string;
-  cover?: string;
-  title?: string;
-  artist?: string;
-  album?: string;
+  config?: string;
   out?: string;
   fps: number;
   frames?: string;
   preview?: boolean;
 };
 
-export const USAGE = `用法: nub run export -- [选项]
+export const USAGE = `用法: nub run export -- <配置.json> [选项]
 
-默认:
-  不传 --audio / --lyric 时，导出 Studio 默认曲目列表（public/ + defaultProps.tracks）
+读取备料生成的 json（单曲或专辑），相对配置文件所在目录解析音频 / 歌词 / 封面。
 
-单曲:
-  --audio   音频文件路径（mp3 / wav / flac / m4a 等）
-  --lyric   歌词文件路径（.lrc / .ttml / .yrc / .qrc / .lys）
+必填:
+  --config  配置文件路径（也可直接作为位置参数）
 
 可选:
-  --cover   封面图片；缺省时尝试从音频标签读取
-  --title   歌曲名；缺省时尝试从音频标签或文件名读取
-  --artist  艺术家
-  --album   专辑名
-  --out     输出 MKV 路径，默认 out/<歌名>.mkv
+  --out     输出 MKV 路径，默认 out/<歌名或专辑名>.mkv
   --fps     帧率，默认 30
   --frames  只渲染部分帧，例如 0-2（调试用）
   --preview 打开 Remotion Studio 预览，而不是直接导出
   -h, --help
+
+不传配置并加上 --preview 时，打开 Studio 预览默认曲目。
 `;
 
 export function parseExportArgs(argv: string[]): ExportArgs {
   const args = argv.filter((arg) => arg !== "--");
   let values: {
-    audio?: string;
-    lyric?: string;
-    cover?: string;
-    title?: string;
-    artist?: string;
-    album?: string;
+    config?: string;
     out?: string;
     fps?: string;
     frames?: string;
     preview?: boolean;
     help?: boolean;
   };
+  let positionals: string[];
 
   try {
-    ({ values } = parseArgs({
+    ({ values, positionals } = parseArgs({
       args,
       options: {
-        audio: { type: "string" },
-        lyric: { type: "string" },
-        cover: { type: "string" },
-        title: { type: "string" },
-        artist: { type: "string" },
-        album: { type: "string" },
+        config: { type: "string" },
         out: { type: "string" },
         fps: { type: "string" },
         frames: { type: "string" },
         preview: { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
-      allowPositionals: false,
+      allowPositionals: true,
     }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -88,8 +70,17 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     throw new UsageError(USAGE, 0);
   }
 
-  if (Boolean(values.audio) !== Boolean(values.lyric)) {
-    throw new UsageError(`--audio 与 --lyric 需要同时提供\n\n${USAGE}`);
+  if (positionals.length > 1) {
+    throw new UsageError(`多余的参数: ${positionals.slice(1).join(" ")}\n\n${USAGE}`);
+  }
+
+  const config = values.config ?? positionals[0];
+  if (values.config && positionals[0] && values.config !== positionals[0]) {
+    throw new UsageError(`同时传了 --config 和位置参数，只需要一份配置\n\n${USAGE}`);
+  }
+
+  if (!config && !values.preview) {
+    throw new UsageError(`需要配置文件\n\n${USAGE}`);
   }
 
   const fps = values.fps === undefined ? DEFAULT_FPS : Number(values.fps);
@@ -98,12 +89,7 @@ export function parseExportArgs(argv: string[]): ExportArgs {
   }
 
   return {
-    audio: values.audio,
-    lyric: values.lyric,
-    cover: values.cover,
-    title: values.title,
-    artist: values.artist,
-    album: values.album,
+    config,
     out: values.out,
     fps,
     frames: values.frames,

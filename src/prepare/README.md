@@ -23,6 +23,14 @@ nub run prepare -- --audio <音频或CUE>
 
 没有歌词时仍写出 json，并以非 0 退出，方便手动补歌词后再生成视频。封面缺失不算失败。
 
+预览 / 导出只需要这份 json：
+
+```console
+nub run export -- <配置.json> --preview
+nub run export -- <配置.json>
+```
+
+
 ## 输出
 
 配置、歌词、封面默认写在音频同目录，文件名与音频同名。`--out` 指向别处时才会把音频拷过去。
