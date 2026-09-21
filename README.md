@@ -16,6 +16,12 @@ nub install
 
 把音频和歌词放到 `public/`（Studio 默认用 `OneLastKiss.flac` + `OneLastKiss.ttml`）。歌词支持 `.lrc` / `.ttml` / `.yrc` / `.qrc` / `.lys`。
 
+只有音频、缺歌词或封面时，可先备料（联网匹配后写出 json + 文件），说明见 [`src/prepare/README.md`](src/prepare/README.md)：
+
+```console
+nub run prepare -- --audio <音频> --out <目录>
+```
+
 ## 预览
 
 ```console
@@ -69,6 +75,7 @@ nub src/export/cli.ts --audio <音频> --lyric <歌词>
 
 相关代码：
 
+- `src/prepare/`：联网匹配歌词 / 封面 / 歌信并写出材料包（[文档](src/prepare/README.md)）
 - `src/export/cli.ts`：入口
 - `src/export/assets.ts`：准备素材和 props
 - `src/export/render.ts`：Studio 预览 / Remotion 渲染
