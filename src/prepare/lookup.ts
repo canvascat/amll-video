@@ -3,7 +3,7 @@ import { parseLyricText } from "../helpers/lyrics";
 import { readRmsEnvelope } from "./audio-envelope";
 import { LOOKUP_TIMEOUT_MS, fetchBytes, mergeSignals } from "./http";
 import { estimateLyricOffsetMs, lyricOnsetTimesMs } from "./lyric-offset";
-import { buildSearchKeyword, pickBestLyric } from "./match";
+import { buildSearchKeyword, pickBestLyric, shouldSearchLyrics } from "./match";
 import { overlayAmlTtml } from "./providers/amll-ttml";
 import { lookupItunes } from "./providers/itunes";
 import { lookupKugou } from "./providers/kugou";
@@ -111,7 +111,7 @@ export async function lookupTrack(options: {
   const embeddedLyric = options.ignoreEmbeddedLyric
     ? undefined
     : tags.embeddedLyric;
-  const needsLyric = !embeddedLyric;
+  const needsLyric = shouldSearchLyrics(embeddedLyric);
   const coverFromFile =
     options.cover ??
     (tags.cover
@@ -163,9 +163,14 @@ export async function lookupTrack(options: {
       }
     : null;
 
-  const lyric = embeddedLyricHit
-    ? embeddedLyricHit
-    : pickBestLyric([...ttmlHits, ...platformHits], query);
+  const lyric = pickBestLyric(
+    [
+      ...(embeddedLyricHit ? [embeddedLyricHit] : []),
+      ...ttmlHits,
+      ...platformHits,
+    ],
+    query,
+  );
 
   const lyricOffsetMs = lyric
     ? await resolveLyricOffsetMs({

@@ -1,0 +1,15 @@
+{
+  "audioFileUrl": "OneLastKiss.flac",
+  "lyricsFileUrl": "OneLastKiss.ttml",
+  "coverImageUrl": "OneLastKiss.jpg",
+  "audioOffsetInSeconds": 0,
+  "songName": "One Last Kiss",
+  "artistName": "宇多田ヒカル",
+  "albumName": "One Last Kiss",
+  "durationInSeconds": 252.02666666666667,
+  "match": {
+    "lyricSource": "amll-ttml",
+    "lyricFormat": "ttml",
+    "coverSource": "embedded"
+  }
+}

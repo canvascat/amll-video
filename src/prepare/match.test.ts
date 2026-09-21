@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { pickBestCandidate, pickBestLyric, needsLyricAlign } from "./match";
+import {
+  pickBestCandidate,
+  pickBestLyric,
+  needsLyricAlign,
+  shouldSearchLyrics,
+} from "./match";
 import type { LyricCandidate, ProviderLyric, TrackQuery } from "./types";
 
 const query: TrackQuery = {
@@ -74,4 +79,26 @@ test("时长差超过 5 秒才需要自动偏移", () => {
     needsLyricAlign(candidate({ duration: 290_000 }), query),
     true,
   );
+});
+
+test("内嵌 lrc 仍要联网找更高优先级格式", () => {
+  assert.equal(shouldSearchLyrics({ format: "lrc" }), true);
+  assert.equal(shouldSearchLyrics({ format: "yrc" }), true);
+  assert.equal(shouldSearchLyrics(undefined), true);
+});
+
+test("已经有 ttml 才跳过歌词搜索", () => {
+  assert.equal(shouldSearchLyrics({ format: "ttml" }), false);
+});
+
+test("时长接近时 ttml 压过内嵌 lrc", () => {
+  const chosen = pickBestLyric(
+    [
+      hit("lrc", { duration: 274_000 }, "embedded"),
+      hit("ttml", { duration: 273_500 }, "amll-ttml"),
+    ],
+    query,
+  );
+  assert.equal(chosen?.format, "ttml");
+  assert.equal(chosen?.source, "amll-ttml");
 });
