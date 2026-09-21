@@ -137,6 +137,7 @@ async function materializeTrack(options: {
       artistName: track.artist ?? "",
       albumName: track.album ?? "",
       durationInSeconds: endSec,
+      lyricOffsetMs: track.lyricOffsetMs,
       lyricLines: jsonSafeLyricLines(lyricLines),
     },
     sourceAudio: {

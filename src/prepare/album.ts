@@ -101,6 +101,7 @@ export async function prepareCueAlbum(options: {
       artist: track.performer || artistName,
       album: albumName,
       durationInSeconds: length,
+      audioStartSeconds: startSeconds,
       cover,
       ignoreEmbeddedLyric: true,
     });

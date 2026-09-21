@@ -9,6 +9,7 @@ export type ConfigTrack = {
   coverPath?: string;
   offsetInSeconds: number;
   audioEndInSeconds?: number;
+  lyricOffsetMs?: number;
   durationInSeconds?: number;
   title?: string;
   artist?: string;
@@ -77,6 +78,7 @@ function readTrack(
   const coverImageUrl =
     asString(raw.coverImageUrl) || defaults?.coverImageUrl || "";
   const offset = asFiniteNumber(raw.audioOffsetInSeconds) ?? 0;
+  const lyricOffsetMs = asFiniteNumber(raw.lyricOffsetMs);
   const end = asFiniteNumber(raw.audioEndInSeconds);
   const duration = asFiniteNumber(raw.durationInSeconds);
 
@@ -92,6 +94,7 @@ function readTrack(
     coverPath: resolveOptionalMediaPath(configDir, coverImageUrl, "封面"),
     offsetInSeconds: offset,
     audioEndInSeconds: end && end > 0 ? end : undefined,
+    lyricOffsetMs,
     durationInSeconds: duration && duration > 0 ? duration : undefined,
     title: asString(raw.songName) || undefined,
     artist: asString(raw.artistName) || defaults?.artistName || undefined,

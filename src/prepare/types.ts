@@ -80,6 +80,7 @@ export type LookupResult = {
   albumName: string;
   lyric?: ResolvedLyric;
   cover?: ResolvedCover;
+  lyricOffsetMs?: number;
 };
 
 export type PreparedTrack = {
@@ -88,6 +89,7 @@ export type PreparedTrack = {
   coverImageUrl: string;
   audioOffsetInSeconds: number;
   audioEndInSeconds?: number;
+  lyricOffsetMs?: number;
   songName: string;
   artistName: string;
   albumName: string;

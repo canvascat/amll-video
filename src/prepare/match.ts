@@ -1,4 +1,5 @@
-import type { LyricCandidate, TrackQuery } from "./types";
+import { lyricFormatRank } from "./lyric-quality";
+import type { LyricCandidate, ProviderLyric, TrackQuery } from "./types";
 
 const NAME_CONTAIN_MIN_RATIO = 0.34;
 const DURATION_CLOSE_MS = 5000;
@@ -155,6 +156,57 @@ export function pickBestCandidate(
     if (score > bestScore) {
       bestScore = score;
       best = candidate;
+    }
+  }
+  return best;
+}
+
+export function durationDeltaMs(
+  candidate: LyricCandidate,
+  query: TrackQuery,
+): number | undefined {
+  if (!candidate.duration || !query.durationMs) {
+    return undefined;
+  }
+  return Math.abs(candidate.duration - query.durationMs);
+}
+
+export function needsLyricAlign(
+  candidate: LyricCandidate | undefined,
+  query: TrackQuery,
+): boolean {
+  const delta = candidate ? durationDeltaMs(candidate, query) : undefined;
+  return delta === undefined || delta > DURATION_CLOSE_MS;
+}
+
+const DURATION_SIMILAR_MS = 2000;
+
+export function pickBestLyric(
+  hits: readonly ProviderLyric[],
+  query: TrackQuery,
+): ProviderLyric | null {
+  let best: ProviderLyric | null = null;
+  let bestDelta = Number.POSITIVE_INFINITY;
+  let bestRank = -1;
+  let bestScore = -1;
+
+  for (const hit of hits) {
+    const score = scoreCandidate(hit.candidate, query);
+    if (score < 0) {
+      continue;
+    }
+    const delta =
+      durationDeltaMs(hit.candidate, query) ?? Number.POSITIVE_INFINITY;
+    const rank = lyricFormatRank(hit.format);
+    const closer = delta < bestDelta - DURATION_SIMILAR_MS;
+    const farther = delta > bestDelta + DURATION_SIMILAR_MS;
+    const betterFormat =
+      rank > bestRank || (rank === bestRank && score > bestScore);
+    if (!best || closer || (!farther && betterFormat)) {
+      best = hit;
+      bestDelta = delta;
+      bestRank = rank;
+      bestScore = score;
     }
   }
   return best;

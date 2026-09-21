@@ -11,6 +11,7 @@ export const trackSchema = z.object({
   artistName: z.string().optional(),
   albumName: z.string().optional(),
   durationInSeconds: z.number().optional(),
+  lyricOffsetMs: z.number().optional(),
   lyricLines: z.array(z.any()).optional(),
 });
 

@@ -1,7 +1,9 @@
 import { titleFromAudioPath } from "../export/timing";
+import { parseLyricText } from "../helpers/lyrics";
+import { readRmsEnvelope } from "./audio-envelope";
 import { LOOKUP_TIMEOUT_MS, fetchBytes, mergeSignals } from "./http";
-import { lyricFormatRank } from "./lyric-quality";
-import { buildSearchKeyword, scoreCandidate } from "./match";
+import { estimateLyricOffsetMs, lyricOnsetTimesMs } from "./lyric-offset";
+import { buildSearchKeyword, pickBestLyric } from "./match";
 import { overlayAmlTtml } from "./providers/amll-ttml";
 import { lookupItunes } from "./providers/itunes";
 import { lookupKugou } from "./providers/kugou";
@@ -16,25 +18,6 @@ import type {
   ResolvedCover,
   TrackQuery,
 } from "./types";
-
-function pickBestLyric(
-  hits: ProviderLyric[],
-  query: TrackQuery,
-): ProviderLyric | null {
-  let best: ProviderLyric | null = null;
-  let bestRank = -1;
-  let bestScore = -1;
-  for (const hit of hits) {
-    const rank = lyricFormatRank(hit.format);
-    const score = Math.max(0, scoreCandidate(hit.candidate, query));
-    if (rank > bestRank || (rank === bestRank && score > bestScore)) {
-      best = hit;
-      bestRank = rank;
-      bestScore = score;
-    }
-  }
-  return best;
-}
 
 function coverSourceFor(hit: ProviderLyric): CoverSource {
   if (hit.source === "kugou") {
@@ -51,6 +34,35 @@ function coverSourceFor(hit: ProviderLyric): CoverSource {
     return "netease";
   }
   return "itunes";
+}
+
+async function resolveLyricOffsetMs(options: {
+  audioPath: string;
+  startSeconds: number;
+  durationSeconds: number;
+  lyric: ProviderLyric;
+  query: TrackQuery;
+}): Promise<number | undefined> {
+  try {
+    const lines = parseLyricText(options.lyric.content, options.lyric.format);
+    const estimated = estimateLyricOffsetMs({
+      lyricTimesMs: lyricOnsetTimesMs(lines),
+      ...(await readRmsEnvelope({
+        audioPath: options.audioPath,
+        startSeconds: options.startSeconds,
+        durationSeconds: options.durationSeconds,
+      })),
+    });
+    if (!estimated) {
+      return undefined;
+    }
+    console.log(
+      `自动对齐歌词 ${estimated.offsetMs}ms（《${options.query.title}》）`,
+    );
+    return estimated.offsetMs;
+  } catch {
+    return undefined;
+  }
 }
 
 async function downloadCover(
@@ -75,6 +87,7 @@ export async function lookupTrack(options: {
   artist?: string;
   album?: string;
   durationInSeconds?: number;
+  audioStartSeconds?: number;
   cover?: ResolvedCover;
   ignoreEmbeddedLyric?: boolean;
   signal?: AbortSignal;
@@ -154,6 +167,16 @@ export async function lookupTrack(options: {
     ? embeddedLyricHit
     : pickBestLyric([...ttmlHits, ...platformHits], query);
 
+  const lyricOffsetMs = lyric
+    ? await resolveLyricOffsetMs({
+        audioPath: options.audioPath,
+        startSeconds: options.audioStartSeconds ?? 0,
+        durationSeconds: trackDuration,
+        lyric,
+        query,
+      })
+    : undefined;
+
   let cover: ResolvedCover | undefined = coverFromFile;
   if (!cover && lyric?.coverUrl) {
     cover = await downloadCover(lyric.coverUrl, coverSourceFor(lyric), signal);
@@ -197,5 +220,6 @@ export async function lookupTrack(options: {
         }
       : undefined,
     cover,
+    lyricOffsetMs,
   };
 }
