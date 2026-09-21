@@ -72,7 +72,7 @@ nub src/export/cli.ts --config <配置.json>
     → out/<歌名或专辑名>.mkv
 ```
 
-画面由 Remotion 编码；音轨是原文件拷贝，FLAC / WAV 等不会被重编码。临时目录在结束后删除。
+画面由 Remotion 编码；**音轨始终是原文件 stream copy**（FLAC / WAV 不会被重编码）。整轨 CUE 多首歌共用同一文件时也只 mux 这一条原音轨。不要用 Studio 的 Render，那会经 Remotion 压缩音频；成片请用上面的导出命令。临时目录在结束后删除。
 
 相关代码：
 

@@ -7,17 +7,56 @@ export type ConcatAudioInput = {
   durationInSeconds: number;
 };
 
+export function collapseSharedSourceAudios(
+  inputs: ConcatAudioInput[],
+): ConcatAudioInput[] {
+  const first = inputs[0];
+  if (!first || inputs.length < 2) {
+    return inputs;
+  }
+  const shared = inputs.every(
+    (input) => path.resolve(input.path) === path.resolve(first.path),
+  );
+  if (!shared) {
+    return inputs;
+  }
+  const last = inputs[inputs.length - 1];
+  return [
+    {
+      path: first.path,
+      offsetInSeconds: first.offsetInSeconds,
+      durationInSeconds: last?.durationInSeconds ?? first.durationInSeconds,
+    },
+  ];
+}
+
+export function audioPlayableSeconds(input: ConcatAudioInput): number {
+  return Math.max(0.001, input.durationInSeconds - input.offsetInSeconds);
+}
+
 export function buildMuxArgs(
   videoPath: string,
   audioPath: string,
   outputPath: string,
+  trim?: { startSeconds: number; durationSeconds: number },
 ): string[] {
+  const audioInput =
+    trim && (trim.startSeconds > 0 || trim.durationSeconds > 0)
+      ? [
+          ...(trim.startSeconds > 0 ? ["-ss", String(trim.startSeconds)] : []),
+          ...(trim.durationSeconds > 0
+            ? ["-t", String(trim.durationSeconds)]
+            : []),
+          "-i",
+          audioPath,
+        ]
+      : ["-i", audioPath];
+
   return [
     "-y",
     "-i",
     videoPath,
-    "-i",
-    audioPath,
+    ...audioInput,
     "-map",
     "0:v:0",
     "-map",
@@ -37,10 +76,7 @@ export function buildConcatAudioArgs(
 ): string[] {
   const ffmpegInputs = inputs.flatMap((input) => ["-i", input.path]);
   const filters = inputs.map((input, index) => {
-    const playable = Math.max(
-      0.001,
-      input.durationInSeconds - input.offsetInSeconds,
-    );
+    const playable = audioPlayableSeconds(input);
     return `[${index}:a]atrim=start=${input.offsetInSeconds}:duration=${playable},asetpts=PTS-STARTPTS,aformat=sample_rates=48000:channel_layouts=stereo[a${index}]`;
   });
   const concatIn = inputs.map((_, index) => `[a${index}]`).join("");
@@ -112,8 +148,13 @@ export async function concatAudioToFlac(
 
 export async function muxOriginalAudio(
   videoPath: string,
-  audioPath: string,
+  audio: ConcatAudioInput,
   outputPath: string,
 ): Promise<void> {
-  await runFfmpeg(buildMuxArgs(videoPath, audioPath, outputPath));
+  const playable = audioPlayableSeconds(audio);
+  const trim =
+    audio.offsetInSeconds > 0
+      ? { startSeconds: audio.offsetInSeconds, durationSeconds: playable }
+      : undefined;
+  await runFfmpeg(buildMuxArgs(videoPath, audio.path, outputPath, trim));
 }

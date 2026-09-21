@@ -6,7 +6,7 @@ import { detectLyricFormat, parseLyricText } from "../helpers/lyrics";
 import type { PlayerCompositionProps, TrackProps } from "../helpers/schema";
 import { trackDurationInFrames } from "../helpers/track-duration";
 import { loadPreparedConfig, type ConfigTrack } from "./load-config";
-import type { ConcatAudioInput } from "./mux";
+import { collapseSharedSourceAudios, type ConcatAudioInput } from "./mux";
 import type { ExportArgs } from "./parse-args";
 import { defaultOutputPath, losslessOutputPath } from "./timing";
 
@@ -155,24 +155,7 @@ async function materializeTrack(options: {
 }
 
 function sourceAudiosForJob(items: MaterializedTrack[]): ConcatAudioInput[] {
-  const first = items[0]?.sourceAudio;
-  if (!first) {
-    return [];
-  }
-  const shared = items.every(
-    (item) => path.resolve(item.sourceAudio.path) === path.resolve(first.path),
-  );
-  if (shared && first.offsetInSeconds === 0) {
-    const last = items[items.length - 1]?.sourceAudio;
-    return [
-      {
-        path: first.path,
-        offsetInSeconds: 0,
-        durationInSeconds: last?.durationInSeconds ?? first.durationInSeconds,
-      },
-    ];
-  }
-  return items.map((item) => item.sourceAudio);
+  return collapseSharedSourceAudios(items.map((item) => item.sourceAudio));
 }
 
 export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {

@@ -1,6 +1,6 @@
 import { Audio } from "@remotion/media";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { AbsoluteFill, Sequence, useDelayRender, useVideoConfig } from "remotion";
+import { AbsoluteFill, Sequence, getRemotionEnvironment, useDelayRender, useVideoConfig } from "remotion";
 import { resolvePublicAsset } from "../helpers/public-asset";
 import type { TrackProps } from "../helpers/schema";
 import { PlayerBackground } from "./Background";
@@ -18,6 +18,7 @@ export const SongPlayer: React.FC<TrackProps> = ({
   audioOffsetInSeconds,
 }) => {
   const { fps } = useVideoConfig();
+  const { isRendering } = getRemotionEnvironment();
   const audioSrc = resolvePublicAsset(audioFileUrl);
   const coverSrc = resolvePublicAsset(coverImageUrl);
   const audioOffsetInFrames = Math.round(audioOffsetInSeconds * fps);
@@ -81,7 +82,7 @@ export const SongPlayer: React.FC<TrackProps> = ({
           />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent from-60% to-black/10" />
         </div>
-        <Audio src={audioSrc} />
+          {!isRendering ? <Audio src={audioSrc} /> : null}
       </Sequence>
       <div className="relative z-[1] size-full font-player text-white">
         <div className="grid size-full grid-cols-[0.45fr_0.55fr] gap-2">
