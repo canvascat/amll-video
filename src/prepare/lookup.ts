@@ -74,22 +74,41 @@ export async function lookupTrack(options: {
   title?: string;
   artist?: string;
   album?: string;
+  durationInSeconds?: number;
+  cover?: ResolvedCover;
+  ignoreEmbeddedLyric?: boolean;
   signal?: AbortSignal;
 }): Promise<LookupResult> {
   const tags = await readLocalTags(options.audioPath);
   const titleLocked = Boolean(options.title?.trim() || tags.title);
   const artistLocked = Boolean(options.artist?.trim() || tags.artist);
   const albumLocked = Boolean(options.album?.trim() || tags.album);
+  const trackDuration =
+    options.durationInSeconds && options.durationInSeconds > 0
+      ? options.durationInSeconds
+      : tags.durationInSeconds;
 
   const query: TrackQuery = {
     title: resolveQueryTitle(tags, options.audioPath, options.title),
     artist: firstNonBlank(options.artist, tags.artist),
     album: firstNonBlank(options.album, tags.album),
-    durationMs: Math.round(tags.durationInSeconds * 1000),
+    durationMs: Math.round(trackDuration * 1000),
   };
   const keyword = buildSearchKeyword(query);
-  const needsLyric = !tags.embeddedLyric;
-  const needsCover = !tags.cover;
+  const embeddedLyric = options.ignoreEmbeddedLyric
+    ? undefined
+    : tags.embeddedLyric;
+  const needsLyric = !embeddedLyric;
+  const coverFromFile =
+    options.cover ??
+    (tags.cover
+      ? {
+          source: "embedded" as const,
+          data: tags.cover.data,
+          mimeType: tags.cover.mimeType,
+        }
+      : undefined);
+  const needsCover = !coverFromFile;
   const needsIdentity = !titleLocked || !artistLocked || !albumLocked;
   const signal = mergeSignals(
     options.signal,
@@ -117,11 +136,11 @@ export async function lookupTrack(options: {
     )
   ).filter((hit): hit is ProviderLyric => hit !== null);
 
-  const embeddedLyric: ProviderLyric | null = tags.embeddedLyric
+  const embeddedLyricHit: ProviderLyric | null = embeddedLyric
     ? {
         source: "embedded",
-        format: tags.embeddedLyric.format,
-        content: tags.embeddedLyric.content,
+        format: embeddedLyric.format,
+        content: embeddedLyric.content,
         candidate: {
           name: query.title,
           artist: query.artist,
@@ -131,17 +150,11 @@ export async function lookupTrack(options: {
       }
     : null;
 
-  const lyric = embeddedLyric
-    ? embeddedLyric
+  const lyric = embeddedLyricHit
+    ? embeddedLyricHit
     : pickBestLyric([...ttmlHits, ...platformHits], query);
 
-  let cover: ResolvedCover | undefined = tags.cover
-    ? {
-        source: "embedded",
-        data: tags.cover.data,
-        mimeType: tags.cover.mimeType,
-      }
-    : undefined;
+  let cover: ResolvedCover | undefined = coverFromFile;
   if (!cover && lyric?.coverUrl) {
     cover = await downloadCover(lyric.coverUrl, coverSourceFor(lyric), signal);
   }
@@ -152,7 +165,7 @@ export async function lookupTrack(options: {
   const filenameTitle = titleFromAudioPath(options.audioPath);
   return {
     query,
-    durationInSeconds: tags.durationInSeconds,
+    durationInSeconds: trackDuration,
     songName: titleLocked
       ? query.title
       : firstNonBlank(

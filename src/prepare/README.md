@@ -1,44 +1,50 @@
 # 备料（`src/prepare`）
 
-给生成视频准备材料：读本地音频标签，缺歌词 / 封面 / 歌名歌手专辑时再联网匹配，写出自包含目录。
+给生成视频准备材料：读本地音频标签，缺歌词 / 封面 / 歌名歌手专辑时再联网匹配，默认写在音频同目录。
 
-本模块只跑在 Node（CLI / 库函数），不进 Remotion 浏览器包，也不改 Studio 和 `src/export/`。
+整轨 CD（`.cue` + 一张 flac）不切片：所有曲目指向同一音频文件，用 `audioOffsetInSeconds` / `audioEndInSeconds` 标注开始和结束。
+
+本模块只跑在 Node（CLI / 库函数），不进 Remotion 浏览器包。
 
 ## 命令
 
 ```console
-nub run prepare -- --audio <音频> --out <目录>
+nub run prepare -- --audio <音频或CUE>
 ```
 
-等价于 `nub src/prepare/cli.ts --audio <音频> --out <目录>`。
+等价于 `nub src/prepare/cli.ts --audio <音频>`。
 
 | 参数 | 说明 |
 | --- | --- |
-| `--audio` | 音频路径（必填） |
-| `--out` | 输出目录（必填） |
+| `--audio` | 音频或 `.cue` 路径（必填） |
+| `--out` | 输出目录（可选，默认与源文件相同） |
 | `--title` / `--artist` / `--album` | 覆盖标签后再搜索 |
 | `-h` | 帮助 |
 
-没有歌词时仍写出 `track.json`，并以非 0 退出，方便手动补 `lyric.*` 后再生成视频。封面缺失不算失败。
+没有歌词时仍写出 json，并以非 0 退出，方便手动补歌词后再生成视频。封面缺失不算失败。
 
 ## 输出
 
-`--out` 是一份自包含材料包，音频会复制进去：
+配置、歌词、封面默认写在音频同目录，文件名与音频同名。`--out` 指向别处时才会把音频拷过去。
+
+### 单曲
+
+例如 `半岛铁盒.flac`：
 
 ```text
-<audio 原扩展名>     # 如 audio.flac
-lyric.ttml|yrc|lrc   # 匹配到歌词时
-cover.jpg|png|...    # 有封面时
-track.json
+半岛铁盒.flac
+半岛铁盒.ttml|yrc|lrc   # 匹配到歌词时
+半岛铁盒.jpg|png|...    # 有封面时；已有同名图则直接引用
+半岛铁盒.json
 ```
 
-`track.json` 字段对齐 [`TrackProps`](../helpers/schema.ts)，另带 `match` 说明来源：
+json 字段对齐 [`TrackProps`](../helpers/schema.ts)，另带 `match` 说明来源：
 
 ```json
 {
-  "audioFileUrl": "audio.flac",
-  "lyricsFileUrl": "lyric.ttml",
-  "coverImageUrl": "cover.jpg",
+  "audioFileUrl": "半岛铁盒.flac",
+  "lyricsFileUrl": "半岛铁盒.ttml",
+  "coverImageUrl": "半岛铁盒.jpg",
   "audioOffsetInSeconds": 0,
   "songName": "半岛铁盒",
   "artistName": "周杰伦",
@@ -55,6 +61,55 @@ track.json
 `lyricSource`：`embedded` | `amll-ttml` | `netease` | `qqmusic` | `kugou` | `lrclib`  
 `coverSource`：`embedded` | `netease` | `qqmusic` | `kugou` | `itunes`
 
+### 整轨 CUE
+
+```console
+nub run prepare -- --audio "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.cue"
+```
+
+不切片、不复制整轨。json 与音频同名；每首歌的歌词文件用歌名。曲目列表里每首歌指向同一音频，并标开始 / 结束时间（CUE `INDEX 01`，单位秒；最后一首的结束为整轨时长）：
+
+```text
+王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.flac
+王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.jpg
+王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.json
+不得了.yrc
+我愿意.ttml
+…
+```
+
+```json
+{
+  "albumName": "菲卖品 王菲精选",
+  "artistName": "王菲",
+  "audioFileUrl": "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.flac",
+  "coverImageUrl": "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.jpg",
+  "tracks": [
+    {
+      "audioFileUrl": "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.flac",
+      "lyricsFileUrl": "不得了.yrc",
+      "coverImageUrl": "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.jpg",
+      "audioOffsetInSeconds": 0,
+      "audioEndInSeconds": 228.4267,
+      "durationInSeconds": 228.4267,
+      "songName": "不得了",
+      "artistName": "王菲",
+      "albumName": "菲卖品 王菲精选"
+    },
+    {
+      "audioFileUrl": "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.flac",
+      "lyricsFileUrl": "我愿意.ttml",
+      "audioOffsetInSeconds": 228.4267,
+      "audioEndInSeconds": 502.52,
+      "durationInSeconds": 502.52,
+      "songName": "我愿意"
+    }
+  ]
+}
+```
+
+播放长度是 `audioEndInSeconds - audioOffsetInSeconds`（没有 end 时退回 `durationInSeconds - offset`，与原先单曲行为一致）。CUE 里的 TITLE / PERFORMER 当作锁定的歌名歌手；专辑名来自 CUE 专辑 TITLE，没有则从 `艺人.-.日期.-.专辑.-.厂牌` 这种文件名解析。同名 `.jpg` 封面优先于音频内嵌图。
+
 ## 本地优先
 
 用 `music-metadata` 读文件，不把网络结果覆盖已有标签。
@@ -62,8 +117,8 @@ track.json
 | 字段 | 规则 |
 | --- | --- |
 | 歌名 / 歌手 / 专辑 | 标签或 CLI 覆盖有则锁定；否则用最佳候选或 iTunes 补。无歌名时用文件名搜索 |
-| 封面 | 内嵌图有则写出，不再下载 |
-| 时长 | 永远用音频文件 |
+| 封面 | 同名图已有则引用；否则写出内嵌图，不再下载 |
+| 时长 | 单曲用音频文件时长；CUE 曲目用 INDEX 起止，匹配时用该曲长度 |
 | 歌词 | 标签里已有带时间戳的词（USLT/SYLT 或 LRC 文本）则用它；无时间戳的纯文本不用 |
 
 三项身份、封面、歌词都齐全时不发起网络请求。
@@ -103,7 +158,6 @@ const result = await lookupTrack({
 });
 const { jsonPath, hasLyrics } = await writeMaterials({
   audioPath,
-  outDir,
   result,
 });
 ```
@@ -115,8 +169,10 @@ const { jsonPath, hasLyrics } = await writeMaterials({
 | 文件 | 职责 |
 | --- | --- |
 | `cli.ts` | 参数解析与退出码 |
+| `album.ts` | 整轨 CUE 备料编排 |
+| `cue.ts` | 解析 CUE、定位音频和封面 |
 | `lookup.ts` | 本地 + 多源编排、合并 |
-| `write-materials.ts` | 写出材料包 |
+| `write-materials.ts` | 写出与音频同名的 json / 歌词 / 封面 |
 | `tags.ts` | 读标签 / 内嵌封面 / 带时间戳歌词 |
 | `match.ts` | 归一化与 `pickBestCandidate` |
 | `lyric-quality.ts` | 格式优先级、翻译合并、解析校验 |
@@ -126,7 +182,7 @@ const { jsonPath, hasLyrics } = await writeMaterials({
 
 ## 非目标
 
-- 不改 export / `calculateMetadata` / Studio
+- 不把整轨切成每首歌一个音频文件
 - 不拉播放地址、Cookie、登录
-- 不做 KRC / 加密 QRC 解密
+- 不解密 KRC / 加密 QRC
 - 不做持久缓存（只有进程内超时与失败隔离）

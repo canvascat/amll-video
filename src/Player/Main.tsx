@@ -16,6 +16,7 @@ export const Player: React.FC<PlayerCompositionProps> = ({ tracks = [] }) => {
               track.durationInSeconds ?? 0,
               track.audioOffsetInSeconds,
               fps,
+              track.audioEndInSeconds,
             )}
             name={track.songName || `Track ${index + 1}`}
           >

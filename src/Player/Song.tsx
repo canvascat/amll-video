@@ -73,37 +73,37 @@ export const SongPlayer: React.FC<TrackProps> = ({
   return (
     <AbsoluteFill className="bg-[#111]">
       <Sequence from={-audioOffsetInFrames}>
-        <div className="relative size-full font-player text-white">
-          <div className="absolute inset-0 z-0">
-            <PlayerBackground
-              audioSrc={audioSrc}
-              coverUrl={coverSrc}
-              hasLyric={lyricLines.length > 0}
-            />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent from-60% to-black/10" />
-          </div>
-          <div className="relative z-[1] grid size-full grid-cols-[0.45fr_0.55fr] gap-2">
-            <div className="flex min-w-0 flex-col items-center justify-center mix-blend-plus-lighter">
-              <div ref={coverRef} className="relative size-[min(50vh,38vw)]">
-                <Cover coverUrl={coverSrc} />
-              </div>
-              <MusicInfo
-                className="mt-[1.75em] w-[min(50vh,38vw)]"
-                songName={songName}
-                artistName={artistName}
-                albumName={albumName}
-              />
-            </div>
-            <div
-              ref={lyricRef}
-              className="box-border size-full contain-paint pr-[15%] mix-blend-plus-lighter [mask-image:linear-gradient(transparent,black_10%,black_90%,transparent)]"
-            >
-              <Lyrics lyricLines={lyricLines} alignPosition={alignPosition} />
-            </div>
-          </div>
+        <div className="absolute inset-0 z-0">
+          <PlayerBackground
+            audioSrc={audioSrc}
+            coverUrl={coverSrc}
+            hasLyric={lyricLines.length > 0}
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent from-60% to-black/10" />
         </div>
         <Audio src={audioSrc} />
       </Sequence>
+      <div className="relative z-[1] size-full font-player text-white">
+        <div className="grid size-full grid-cols-[0.45fr_0.55fr] gap-2">
+          <div className="flex min-w-0 flex-col items-center justify-center mix-blend-plus-lighter">
+            <div ref={coverRef} className="relative size-[min(50vh,38vw)]">
+              <Cover coverUrl={coverSrc} />
+            </div>
+            <MusicInfo
+              className="mt-[1.75em] w-[min(50vh,38vw)]"
+              songName={songName}
+              artistName={artistName}
+              albumName={albumName}
+            />
+          </div>
+          <div
+            ref={lyricRef}
+            className="box-border size-full contain-paint pr-[15%] mix-blend-plus-lighter [mask-image:linear-gradient(transparent,black_10%,black_90%,transparent)]"
+          >
+            <Lyrics lyricLines={lyricLines} alignPosition={alignPosition} />
+          </div>
+        </div>
+      </div>
     </AbsoluteFill>
   );
 };
