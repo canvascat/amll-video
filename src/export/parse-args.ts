@@ -1,4 +1,3 @@
-import os from "node:os";
 import { parseArgs } from "node:util";
 import { DEFAULT_FPS } from "../remotion/constants";
 
@@ -32,7 +31,7 @@ export const USAGE = `用法: nub run export -- <配置.json> [选项]
   --out     输出 MKV 路径，默认 out/<歌名或专辑名>.mkv
   --fps          帧率，默认 30
   --frames       只渲染部分帧，例如 0-2（调试用）
-  --concurrency  并行渲染路数，数字或 50%；默认最多 4 路（约 CPU 一半）
+  --concurrency  并行渲染路数，数字或 50%；默认 1 路
   --preview      打开 Remotion Studio 预览，而不是直接导出
   -h, --help
 
@@ -103,10 +102,8 @@ export function parseExportArgs(argv: string[]): ExportArgs {
   };
 }
 
-export function defaultRenderConcurrency(
-  cpuCount = os.availableParallelism(),
-): number {
-  return Math.max(1, Math.min(4, Math.floor(cpuCount / 2)));
+export function defaultRenderConcurrency(): number {
+  return 1;
 }
 
 function parseConcurrency(value?: string): string {
