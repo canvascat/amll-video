@@ -181,6 +181,12 @@ export function needsLyricAlign(
 
 const DURATION_SIMILAR_MS = 2000;
 
+export function shouldSearchLyrics(
+  embedded?: { format: ProviderLyric["format"] },
+): boolean {
+  return embedded?.format !== "ttml";
+}
+
 export function pickBestLyric(
   hits: readonly ProviderLyric[],
   query: TrackQuery,
