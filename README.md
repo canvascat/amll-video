@@ -58,7 +58,7 @@ nub src/export/cli.ts --config <配置.json>
 | `--out` | 输出路径；若写成 `.mp4` 会改成 `.mkv` |
 | `--fps` | 帧率，默认 30 |
 | `--frames` | 只渲染部分帧，例如 `0-2`（调试） |
-| `--concurrency` | 并行渲染路数，数字或 `50%`；默认最多 4 路（约 CPU 一半）。Mesh 背景吃 GPU，开太高可能变黑帧或更慢 |
+| `--concurrency` | 并行渲染路数，数字或 `50%`；默认 1 路。开太高歌词会闪 |
 | `--preview` | 打开 Studio，不导出 |
 | `-h` | 打印帮助 |
 
@@ -68,7 +68,7 @@ nub src/export/cli.ts --config <配置.json>
 配置 json（单曲或专辑）
     → 相对配置目录解析音频 / 歌词 / 封面
     → 拷到临时 public 目录，生成 Composition props
-    → Remotion 渲染无声 H.264（--muted，--gl=angle，默认最多 4 路并行）
+    → Remotion 渲染无声 H.264（--muted，--gl=angle，默认 1 路并行）
     → ffmpeg -c:v copy -c:a copy -shortest
     → out/<歌名或专辑名>.mkv
 ```

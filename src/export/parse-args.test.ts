@@ -6,12 +6,8 @@ import {
   parseExportArgs,
 } from "./parse-args";
 
-test("WebGL 导出默认最多 4 路，约为 CPU 一半", () => {
-  assert.equal(defaultRenderConcurrency(10), 4);
-  assert.equal(defaultRenderConcurrency(8), 4);
-  assert.equal(defaultRenderConcurrency(4), 2);
-  assert.equal(defaultRenderConcurrency(2), 1);
-  assert.equal(defaultRenderConcurrency(1), 1);
+test("导出默认 1 路并行", () => {
+  assert.equal(defaultRenderConcurrency(), 1);
 });
 
 test("可显式指定并行路数或百分比", () => {
