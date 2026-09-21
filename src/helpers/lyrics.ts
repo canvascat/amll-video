@@ -87,6 +87,32 @@ export function parseLyricText(raw: string, format: LyricFormat): LyricLine[] {
   return lines.map(mapLyric);
 }
 
+export function shiftLyricLines(
+  lines: readonly LyricLine[],
+  offsetMs: number,
+): LyricLine[] {
+  if (!offsetMs) {
+    return [...lines];
+  }
+  return lines.map((line) => ({
+    ...line,
+    startTime: shiftTime(line.startTime, offsetMs),
+    endTime: shiftTime(line.endTime, offsetMs),
+    words: line.words.map((word) => ({
+      ...word,
+      startTime: shiftTime(word.startTime, offsetMs),
+      endTime: shiftTime(word.endTime, offsetMs),
+    })),
+  }));
+}
+
+function shiftTime(value: number, offsetMs: number): number {
+  if (!Number.isFinite(value)) {
+    return value;
+  }
+  return value + offsetMs;
+}
+
 export async function loadLyricLines(
   lyricsFileUrl: string,
   abortSignal?: AbortSignal,

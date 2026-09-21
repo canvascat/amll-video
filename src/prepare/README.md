@@ -135,12 +135,13 @@ nub run prepare -- --audio "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新�
 
 缺什么补什么。歌词源并发搜索，总超时约 20s，单源失败不影响其它源。只取歌词、封面 URL、元数据，不下载音轨、不登录。
 
-搜索词：`歌名 + 歌手`。候选用 SPlayer 同款 `pickBestCandidate`（见 `match.ts`）：
+搜索词：`歌名 + 歌手`。候选用 `pickBestCandidate` / `pickBestLyric`（见 `match.ts`）：
 
 - 硬条件：曲名全等或足够长的双向包含；双方都有时长则差距不超过 20s；有歌手时必须命中至少一个歌手
 - 打分：曲名全等 +10 / 子串 +4；歌手全等 +5 / 包含 +2；专辑全等 +2；时长 ±5s +3
+- 跨源：先比时长（差 2s 以上视为不同版本），再比格式 **TTML > YRC/QRC > 带时间戳 LRC**，最后比分数。时长差过大的候选直接丢掉，不会因为 YRC 压过更贴合的 LRC。
 
-各源先在自己的结果里挑 1 条，再跨源比质量：**TTML > YRC/QRC > 带时间戳 LRC**，同等格式再比分数。写出前用 [`parseLyricText`](../helpers/lyrics.ts) 校验播放器能解析，署名/作曲行不算可用歌词。
+时长仍可能和这张碟对不齐（精选/不同前奏）。选出版本后会用这一段音频的 RMS 包络和歌词起唱点估常量偏移；置信足够才写入 `lyricOffsetMs`，播放时平移时间戳。结构完全不同的版本不会硬套偏移。
 
 | 源 | 做什么 | 备注 |
 | --- | --- | --- |
@@ -182,7 +183,9 @@ const { jsonPath, hasLyrics } = await writeMaterials({
 | `lookup.ts` | 本地 + 多源编排、合并 |
 | `write-materials.ts` | 写出与音频同名的 json / 歌词 / 封面 |
 | `tags.ts` | 读标签 / 内嵌封面 / 带时间戳歌词 |
-| `match.ts` | 归一化与 `pickBestCandidate` |
+| `match.ts` | 归一化、时长优先选版本 |
+| `lyric-offset.ts` | 歌词常量偏移估算 |
+| `audio-envelope.ts` | 用 ffmpeg 读 RMS 包络 |
 | `lyric-quality.ts` | 格式优先级、翻译合并、解析校验 |
 | `http.ts` | 超时、UA、JSON/JSONP |
 | `providers/*` | 各源搜索与取词 |

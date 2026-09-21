@@ -1,7 +1,7 @@
 import { ALL_FORMATS, Input, UrlSource } from "mediabunny";
 import type { CalculateMetadataFunction } from "remotion";
 import { DEFAULT_FPS } from "../remotion/constants";
-import { loadLyricLines } from "./lyrics";
+import { loadLyricLines, shiftLyricLines } from "./lyrics";
 import type { PlayerCompositionProps, TrackProps } from "./schema";
 import { trackDurationInFrames } from "./track-duration";
 
@@ -51,6 +51,10 @@ async function resolveTrack(
       () => [],
     );
   }
+  const lyricOffsetMs = track.lyricOffsetMs ?? 0;
+  if (lyricOffsetMs) {
+    lyricLines = shiftLyricLines(lyricLines, lyricOffsetMs);
+  }
 
   let durationInSeconds = track.durationInSeconds;
   if (!hasPositiveDuration(durationInSeconds)) {
@@ -67,6 +71,7 @@ async function resolveTrack(
 
   return {
     ...track,
+    lyricOffsetMs: 0,
     durationInSeconds,
     lyricLines,
   };

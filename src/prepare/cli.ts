@@ -145,6 +145,9 @@ async function main() {
       `歌词: ${prepared.match.lyricSource ?? "无"} ${prepared.match.lyricFormat ?? ""}`.trim(),
     );
     console.log(`封面: ${prepared.match.coverSource ?? "无"}`);
+    if (prepared.lyricOffsetMs) {
+      console.log(`歌词偏移: ${prepared.lyricOffsetMs}ms`);
+    }
 
     if (!hasLyrics) {
       throw new UsageError(

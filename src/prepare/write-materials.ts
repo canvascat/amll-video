@@ -65,6 +65,7 @@ function toPreparedTrack(
     durationInSeconds: timing
       ? roundTime(timing.endSeconds)
       : result.durationInSeconds,
+    lyricOffsetMs: result.lyricOffsetMs,
     match: {
       lyricSource: result.lyric?.source,
       lyricFormat: result.lyric?.format,
