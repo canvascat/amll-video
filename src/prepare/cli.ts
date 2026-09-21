@@ -1,6 +1,8 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import { prepareCueAlbum } from "./album";
+import { isCuePath } from "./cue";
 import { lookupTrack } from "./lookup";
 import { writeMaterials } from "./write-materials";
 
@@ -14,17 +16,24 @@ class UsageError extends Error {
   }
 }
 
-const USAGE = `用法: nub run prepare -- --audio <音频> --out <目录> [选项]
+const USAGE = `用法: nub run prepare -- --audio <音频或CUE> [--out <目录>] [选项]
 
-根据音频标签联网匹配歌词、封面和歌名/歌手/专辑，写出自包含材料包：
-  audio<原扩展名>  lyric.<格式>  cover.<图>  track.json
+根据音频标签或 CUE 曲目表联网匹配歌词、封面和歌名/歌手/专辑。
+
+默认写在音频 / CUE 同目录，配置与音频同名。
+
+单曲写出:
+  <歌曲>.json  <歌曲>.<歌词格式>  <歌曲>.<图>
+
+整轨 CUE 写出（同一音频 + 每首歌的开始/结束时间）:
+  <专辑音频>.json  <歌名>.<歌词格式> …
 
 必填:
-  --audio   音频文件路径
-  --out     输出目录
+  --audio   音频或 .cue 路径
 
 可选:
-  --title   覆盖音频标签中的歌名后再搜索
+  --out     输出目录（默认与源文件相同）
+  --title   覆盖歌名后再搜索（单曲）
   --artist  覆盖艺术家
   --album   覆盖专辑名
   -h, --help
@@ -32,7 +41,7 @@ const USAGE = `用法: nub run prepare -- --audio <音频> --out <目录> [选�
 
 type PrepareArgs = {
   audio: string;
-  out: string;
+  out?: string;
   title?: string;
   artist?: string;
   album?: string;
@@ -70,8 +79,8 @@ function parsePrepareArgs(argv: string[]): PrepareArgs {
   if (values.help) {
     throw new UsageError(USAGE, 0);
   }
-  if (!values.audio || !values.out) {
-    throw new UsageError(`需要 --audio 与 --out\n\n${USAGE}`);
+  if (!values.audio) {
+    throw new UsageError(`需要 --audio\n\n${USAGE}`);
   }
 
   return {
@@ -83,23 +92,48 @@ function parsePrepareArgs(argv: string[]): PrepareArgs {
   };
 }
 
+function resolveInput(audio: string): string {
+  const resolved = path.resolve(audio);
+  if (!existsSync(resolved)) {
+    throw new UsageError(`找不到文件: ${resolved}`);
+  }
+  if (statSync(resolved).isDirectory()) {
+    throw new UsageError(`请传入 .cue 或音频文件，而不是目录: ${resolved}`);
+  }
+  return resolved;
+}
+
 async function main() {
   try {
     const args = parsePrepareArgs(process.argv.slice(2));
-    const audioPath = path.resolve(args.audio);
-    if (!existsSync(audioPath)) {
-      throw new UsageError(`找不到音频文件: ${audioPath}`);
+    const inputPath = resolveInput(args.audio);
+    const outDir = path.resolve(args.out ?? path.dirname(inputPath));
+
+    if (isCuePath(inputPath)) {
+      const { jsonPath, missingLyrics, trackCount } = await prepareCueAlbum({
+        cuePath: inputPath,
+        outDir,
+        album: args.album,
+        artist: args.artist,
+      });
+      console.log(`已写出 ${jsonPath}（${trackCount} 首，共用同一音频）`);
+      if (missingLyrics > 0) {
+        throw new UsageError(
+          `${missingLyrics} 首未匹配到歌词，已写出配置，可按歌名补歌词后再生成视频`,
+        );
+      }
+      return;
     }
 
     const result = await lookupTrack({
-      audioPath,
+      audioPath: inputPath,
       title: args.title,
       artist: args.artist,
       album: args.album,
     });
     const { jsonPath, prepared, hasLyrics } = await writeMaterials({
-      audioPath,
-      outDir: path.resolve(args.out),
+      audioPath: inputPath,
+      outDir,
       result,
     });
 
@@ -113,7 +147,9 @@ async function main() {
     console.log(`封面: ${prepared.match.coverSource ?? "无"}`);
 
     if (!hasLyrics) {
-      throw new UsageError("未匹配到可用歌词，已写出 track.json，可手动补 lyric 后再生成视频");
+      throw new UsageError(
+        "未匹配到可用歌词，已写出配置，可手动补同名歌词后再生成视频",
+      );
     }
   } catch (error) {
     if (error instanceof UsageError) {

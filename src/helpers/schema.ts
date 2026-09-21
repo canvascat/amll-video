@@ -5,6 +5,7 @@ export const trackSchema = z.object({
   audioFileUrl: z.string(),
   lyricsFileUrl: z.string(),
   audioOffsetInSeconds: z.number().min(0),
+  audioEndInSeconds: z.number().positive().optional(),
   coverImageUrl: z.string().optional(),
   songName: z.string().optional(),
   artistName: z.string().optional(),

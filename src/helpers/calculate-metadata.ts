@@ -122,6 +122,7 @@ export const calculatePlayerMetadata: CalculateMetadataFunction<
         track.durationInSeconds as number,
         track.audioOffsetInSeconds,
         DEFAULT_FPS,
+        track.audioEndInSeconds,
       ),
     0,
   );

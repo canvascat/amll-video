@@ -87,6 +87,7 @@ export type PreparedTrack = {
   lyricsFileUrl: string;
   coverImageUrl: string;
   audioOffsetInSeconds: number;
+  audioEndInSeconds?: number;
   songName: string;
   artistName: string;
   albumName: string;
@@ -96,4 +97,12 @@ export type PreparedTrack = {
     lyricFormat?: LyricFormat;
     coverSource?: CoverSource;
   };
+};
+
+export type PreparedAlbum = {
+  albumName: string;
+  artistName: string;
+  audioFileUrl: string;
+  coverImageUrl: string;
+  tracks: PreparedTrack[];
 };

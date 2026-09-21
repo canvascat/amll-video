@@ -19,7 +19,7 @@ nub install
 只有音频、缺歌词或封面时，可先备料（联网匹配后写出 json + 文件），说明见 [`src/prepare/README.md`](src/prepare/README.md)：
 
 ```console
-nub run prepare -- --audio <音频> --out <目录>
+nub run prepare -- --audio <音频或CUE>
 ```
 
 ## 预览

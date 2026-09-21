@@ -79,6 +79,7 @@ async function materializeTrack(options: {
   publicDir: string;
   fps: number;
   offsetInSeconds: number;
+  audioEndInSeconds?: number;
   coverPath?: string;
   title?: string;
   artist?: string;
@@ -96,6 +97,7 @@ async function materializeTrack(options: {
   if (!durationSec || !Number.isFinite(durationSec) || durationSec <= 0) {
     throw new Error(`无法读取音频时长: ${audioPath}`);
   }
+  const endSec = options.audioEndInSeconds ?? durationSec;
 
   const title =
     options.title || audioMeta.common.title || titleFromAudioPath(audioPath);
@@ -124,21 +126,27 @@ async function materializeTrack(options: {
   return {
     track: {
       audioOffsetInSeconds: offsetInSeconds,
+      audioEndInSeconds: options.audioEndInSeconds,
       audioFileUrl: audioFileName,
       lyricsFileUrl: lyricFileName,
       coverImageUrl: coverFileName ?? "",
       songName: title,
       artistName: artist,
       albumName: album,
-      durationInSeconds: durationSec,
+      durationInSeconds: endSec,
       lyricLines: jsonSafeLyricLines(lyricLines),
     },
     sourceAudio: {
       path: audioPath,
       offsetInSeconds,
-      durationInSeconds: durationSec,
+      durationInSeconds: endSec,
     },
-    durationInFrames: trackDurationInFrames(durationSec, offsetInSeconds, fps),
+    durationInFrames: trackDurationInFrames(
+      endSec,
+      offsetInSeconds,
+      fps,
+      options.audioEndInSeconds,
+    ),
   };
 }
 
@@ -197,6 +205,7 @@ async function prepareDefaultPlaylistJob(args: ExportArgs): Promise<ExportJob> {
         publicDir,
         fps: args.fps,
         offsetInSeconds: track.audioOffsetInSeconds,
+        audioEndInSeconds: track.audioEndInSeconds,
         coverPath:
           track.coverImageUrl &&
           !/^(https?:|data:)/i.test(track.coverImageUrl) &&
