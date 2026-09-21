@@ -102,7 +102,7 @@ export async function exportVideo(args: ExportArgs): Promise<string> {
     ...(job.ownsPublicDir ? [`--public-dir=${job.publicDir}`] : []),
     "--muted",
     "--codec=h264",
-    "--concurrency=1",
+    `--concurrency=${args.concurrency}`,
     "--gl=angle",
     "--chrome-mode=headless-shell",
     `--fps=${job.fps}`,
@@ -125,7 +125,7 @@ export async function exportVideo(args: ExportArgs): Promise<string> {
 
   try {
     console.log(
-      `正在渲染无声画面：《${trackLabel}》（${job.durationInFrames} 帧）`,
+      `正在渲染无声画面：《${trackLabel}》（${job.durationInFrames} 帧，concurrency=${args.concurrency}）`,
     );
     await runRemotion(remotionArgs, tmpDir);
 
