@@ -1,9 +1,11 @@
 import {
   BackgroundRender,
   MeshGradientRenderer,
-} from "@applemusic-like-lyrics/react";
-import type { FC } from "react";
+  type AbstractBaseRenderer,
+} from "@applemusic-like-lyrics/core";
 import { useWindowedAudioData, visualizeAudio } from "@remotion/media-utils";
+import type { FC } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useCurrentFrame, useVideoConfig } from "remotion";
 
 export const PlayerBackground: FC<{
@@ -13,6 +15,10 @@ export const PlayerBackground: FC<{
 }> = ({ audioSrc, coverUrl, hasLyric }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const coreBGRenderRef = useRef<AbstractBaseRenderer | null>(null);
+  const album = coverUrl || undefined;
+
   const { audioData, dataOffsetInSeconds } = useWindowedAudioData({
     src: audioSrc,
     frame,
@@ -34,17 +40,52 @@ export const PlayerBackground: FC<{
     lowFreqVolume = Math.min(1, bass * 3);
   }
 
-  return (
-    <BackgroundRender
-      album={coverUrl || undefined}
-      lowFreqVolume={lowFreqVolume}
-      renderScale={1}
-      fps={fps}
-      renderer={MeshGradientRenderer}
-      staticMode={false}
-      playing
-      hasLyric={hasLyric}
-      className="size-full"
-    />
-  );
+  const rendererPropsRef = useRef({ album, fps, lowFreqVolume, hasLyric });
+  rendererPropsRef.current = { album, fps, lowFreqVolume, hasLyric };
+
+  useLayoutEffect(() => {
+    const backgroundRender = BackgroundRender.new(MeshGradientRenderer);
+    coreBGRenderRef.current = backgroundRender;
+
+    const current = rendererPropsRef.current;
+    if (current.album) {
+      void backgroundRender.setAlbum(current.album);
+    }
+    backgroundRender.setFPS(current.fps);
+    backgroundRender.setRenderScale(1);
+    backgroundRender.setLowFreqVolume(current.lowFreqVolume);
+    backgroundRender.setHasLyric(current.hasLyric);
+    backgroundRender.resume();
+
+    const element = backgroundRender.getElement();
+    element.className = "size-full min-h-0 min-w-0 overflow-hidden";
+    wrapperRef.current?.appendChild(element);
+
+    return () => {
+      backgroundRender.dispose();
+      if (coreBGRenderRef.current === backgroundRender) {
+        coreBGRenderRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (album) {
+      void coreBGRenderRef.current?.setAlbum(album);
+    }
+  }, [album]);
+
+  useEffect(() => {
+    coreBGRenderRef.current?.setFPS(fps);
+  }, [fps]);
+
+  useEffect(() => {
+    coreBGRenderRef.current?.setLowFreqVolume(lowFreqVolume);
+  }, [lowFreqVolume]);
+
+  useEffect(() => {
+    coreBGRenderRef.current?.setHasLyric(hasLyric);
+  }, [hasLyric]);
+
+  return <div ref={wrapperRef} className="size-full" />;
 };

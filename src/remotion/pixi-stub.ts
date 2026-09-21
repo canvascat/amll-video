@@ -5,3 +5,6 @@ export class BlurFilter {}
 export class BulgePinchFilter {}
 export class ColorMatrixFilter {}
 export class Sprite {}
+export const utils = {
+  isWebGLSupported: () => false,
+};

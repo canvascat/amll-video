@@ -1,17 +1,20 @@
 import { staticFile } from "remotion";
+import prepared from "../../public/OneLastKiss.json";
 import type { PlayerCompositionProps } from "./schema";
 
 export const defaultPlayerProps: PlayerCompositionProps = {
   tracks: [
     {
-      audioOffsetInSeconds: 0,
-      audioFileUrl: staticFile("OneLastKiss.flac"),
-      lyricsFileUrl: staticFile("OneLastKiss.ttml"),
-    },
-    {
-      audioOffsetInSeconds: 0,
-      audioFileUrl: staticFile("周杰伦 - 半岛铁盒.flac"),
-      lyricsFileUrl: staticFile("周杰伦 - 半岛铁盒.ttml"),
+      audioOffsetInSeconds: prepared.audioOffsetInSeconds,
+      audioFileUrl: staticFile(prepared.audioFileUrl),
+      lyricsFileUrl: staticFile(prepared.lyricsFileUrl),
+      coverImageUrl: prepared.coverImageUrl
+        ? staticFile(prepared.coverImageUrl)
+        : undefined,
+      songName: prepared.songName,
+      artistName: prepared.artistName,
+      albumName: prepared.albumName,
+      durationInSeconds: prepared.durationInSeconds,
     },
   ],
 };
