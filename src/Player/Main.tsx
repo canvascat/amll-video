@@ -7,7 +7,9 @@ export const Player: React.FC<PlayerCompositionProps> = ({ tracks = [] }) => {
   const { fps } = useVideoConfig();
 
   return (
-    <AbsoluteFill className="bg-[#111]">
+    <AbsoluteFill
+      className="bg-black font-bold"
+    >
       <Series>
         {tracks.map((track, index) => (
           <Series.Sequence
