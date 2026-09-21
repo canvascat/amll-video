@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
+import { applyProjectTmp, withProjectTmpEnv } from "../lib/project-tmp";
 import { COMPOSITION_ID } from "../remotion/constants";
 import { ensureOutputDir, prepareExportJob } from "./assets";
 import { concatAudioToFlac, muxOriginalAudio } from "./mux";
@@ -34,12 +34,12 @@ function remotionBin(): string {
   return path.join(projectRoot(), "node_modules", ".bin", "remotion");
 }
 
-function runRemotion(args: string[]): Promise<void> {
+function runRemotion(args: string[], tmpDir: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(remotionBin(), args, {
       stdio: "inherit",
       cwd: projectRoot(),
-      env: process.env,
+      env: withProjectTmpEnv(tmpDir),
     });
     child.on("error", reject);
     child.on("exit", (code) => {
@@ -53,9 +53,10 @@ function runRemotion(args: string[]): Promise<void> {
 }
 
 export async function previewStudio(args: ExportArgs): Promise<void> {
+  const tmpDir = await applyProjectTmp();
   if (!args.config) {
     console.log("正在启动 Remotion Studio 预览默认曲目列表");
-    await runRemotion(["studio", remotionEntry()]);
+    await runRemotion(["studio", remotionEntry()], tmpDir);
     return;
   }
 
@@ -66,12 +67,15 @@ export async function previewStudio(args: ExportArgs): Promise<void> {
   console.log(`正在启动 Remotion Studio 预览：《${job.title}》`);
 
   try {
-    await runRemotion([
-      "studio",
-      remotionEntry(),
-      `--props=${propsPath}`,
-      `--public-dir=${job.publicDir}`,
-    ]);
+    await runRemotion(
+      [
+        "studio",
+        remotionEntry(),
+        `--props=${propsPath}`,
+        `--public-dir=${job.publicDir}`,
+      ],
+      tmpDir,
+    );
   } finally {
     if (job.ownsPublicDir) {
       await rm(job.publicDir, { recursive: true, force: true });
@@ -80,10 +84,11 @@ export async function previewStudio(args: ExportArgs): Promise<void> {
 }
 
 export async function exportVideo(args: ExportArgs): Promise<string> {
+  const tmpDir = await applyProjectTmp();
   const job = await prepareExportJob(args);
   const outputLocation = path.resolve(job.outputPath);
   await ensureOutputDir(outputLocation);
-  const workDir = await mkdtemp(path.join(os.tmpdir(), "rmv-render-"));
+  const workDir = await mkdtemp(path.join(tmpDir, "rmv-render-"));
   const silentVideoPath = path.join(workDir, "video-only.mp4");
   const propsPath = path.join(workDir, "input-props.json");
   await writeFile(propsPath, JSON.stringify(job.inputProps));
@@ -122,7 +127,7 @@ export async function exportVideo(args: ExportArgs): Promise<string> {
     console.log(
       `正在渲染无声画面：《${trackLabel}》（${job.durationInFrames} 帧）`,
     );
-    await runRemotion(remotionArgs);
+    await runRemotion(remotionArgs, tmpDir);
 
     let audio = job.sourceAudios[0];
     if (!audio) {
