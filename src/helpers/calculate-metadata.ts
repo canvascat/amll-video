@@ -2,7 +2,6 @@ import { ALL_FORMATS, Input, UrlSource } from "mediabunny";
 import type { CalculateMetadataFunction } from "remotion";
 import { DEFAULT_FPS } from "../remotion/constants";
 import { loadLyricLines } from "./lyrics";
-import { tagsFromMediabunny, titleFromAudioUrl } from "./metadata";
 import type { PlayerCompositionProps, TrackProps } from "./schema";
 import { trackDurationInFrames } from "./track-duration";
 
@@ -19,6 +18,7 @@ function inputTracks(props: PlayerCompositionProps): TrackProps[] {
         audioFileUrl: legacy.audioFileUrl,
         lyricsFileUrl: legacy.lyricsFileUrl ?? "",
         audioOffsetInSeconds: legacy.audioOffsetInSeconds ?? 0,
+        audioEndInSeconds: legacy.audioEndInSeconds,
         coverImageUrl: legacy.coverImageUrl,
         songName: legacy.songName,
         artistName: legacy.artistName,
@@ -45,39 +45,20 @@ async function resolveTrack(
     throw new Error("曲目缺少 audioFileUrl");
   }
 
-  const hasLyrics = (track.lyricLines?.length ?? 0) > 0;
-  const hasDuration = hasPositiveDuration(track.durationInSeconds);
-  const hasIdentity =
-    !isBlank(track.songName) &&
-    !isBlank(track.artistName) &&
-    !isBlank(track.albumName) &&
-    track.coverImageUrl !== undefined;
+  let lyricLines = track.lyricLines ?? [];
+  if (lyricLines.length === 0 && !isBlank(track.lyricsFileUrl)) {
+    lyricLines = await loadLyricLines(track.lyricsFileUrl, abortSignal).catch(
+      () => [],
+    );
+  }
 
-  let durationInSeconds = hasDuration ? track.durationInSeconds : undefined;
-  let tags = tagsFromMediabunny({});
-  let lyricLines = hasLyrics ? (track.lyricLines ?? []) : [];
-
-  if (!hasDuration || !hasIdentity) {
+  let durationInSeconds = track.durationInSeconds;
+  if (!hasPositiveDuration(durationInSeconds)) {
     const input = new Input({
       source: new UrlSource(track.audioFileUrl),
       formats: ALL_FORMATS,
     });
-    const [computedDuration, metadataTags] = await Promise.all([
-      hasDuration
-        ? Promise.resolve(durationInSeconds as number)
-        : input.computeDuration(),
-      hasIdentity
-        ? Promise.resolve({})
-        : input.getMetadataTags().catch(() => ({})),
-    ]);
-    durationInSeconds = computedDuration;
-    tags = tagsFromMediabunny(metadataTags);
-  }
-
-  if (!hasLyrics && !isBlank(track.lyricsFileUrl)) {
-    lyricLines = await loadLyricLines(track.lyricsFileUrl, abortSignal).catch(
-      () => [],
-    );
+    durationInSeconds = await input.computeDuration();
   }
 
   if (!hasPositiveDuration(durationInSeconds)) {
@@ -87,18 +68,6 @@ async function resolveTrack(
   return {
     ...track,
     durationInSeconds,
-    songName: isBlank(track.songName)
-      ? tags.title || titleFromAudioUrl(track.audioFileUrl)
-      : track.songName,
-    artistName: isBlank(track.artistName)
-      ? tags.artist || "未知创作者"
-      : track.artistName,
-    albumName: isBlank(track.albumName)
-      ? tags.album || "未知专辑"
-      : track.albumName,
-    coverImageUrl: isBlank(track.coverImageUrl)
-      ? tags.coverDataUrl || ""
-      : track.coverImageUrl,
     lyricLines,
   };
 }

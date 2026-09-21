@@ -53,7 +53,7 @@ function runRemotion(args: string[]): Promise<void> {
 }
 
 export async function previewStudio(args: ExportArgs): Promise<void> {
-  if (!args.audio) {
+  if (!args.config) {
     console.log("正在启动 Remotion Studio 预览默认曲目列表");
     await runRemotion(["studio", remotionEntry()]);
     return;

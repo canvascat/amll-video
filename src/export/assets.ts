@@ -1,20 +1,14 @@
 import type { LyricLine } from "@applemusic-like-lyrics/core";
-import { parseFile } from "music-metadata";
-import { existsSync } from "node:fs";
-import { copyFile, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { defaultPlayerProps } from "../helpers/default-props";
 import { detectLyricFormat, parseLyricText } from "../helpers/lyrics";
 import type { PlayerCompositionProps, TrackProps } from "../helpers/schema";
 import { trackDurationInFrames } from "../helpers/track-duration";
+import { loadPreparedConfig, type ConfigTrack } from "./load-config";
 import type { ConcatAudioInput } from "./mux";
 import type { ExportArgs } from "./parse-args";
-import {
-  defaultOutputPath,
-  losslessOutputPath,
-  titleFromAudioPath,
-} from "./timing";
+import { defaultOutputPath, losslessOutputPath } from "./timing";
 
 export type ExportJob = {
   publicDir: string;
@@ -26,13 +20,6 @@ export type ExportJob = {
   title: string;
   inputProps: PlayerCompositionProps;
 };
-
-function coverExtension(format: string | undefined): string {
-  if (format?.includes("png")) return ".png";
-  if (format?.includes("webp")) return ".webp";
-  if (format?.includes("gif")) return ".gif";
-  return ".jpg";
-}
 
 function jsonSafeTime(value: number): number {
   return Number.isFinite(value) ? value : 0;
@@ -55,172 +42,158 @@ function jsonSafeLyricLines(lines: LyricLine[]): LyricLine[] {
   }));
 }
 
-export function publicAssetToPath(fileUrl: string): string {
-  let relative = fileUrl.trim();
-  try {
-    relative = new URL(fileUrl, "http://local.invalid").pathname;
-  } catch {
-    // keep relative as-is
-  }
-  relative = decodeURIComponent(relative.replace(/^\/+/, ""));
-  return path.resolve(process.cwd(), "public", relative);
-}
-
 type MaterializedTrack = {
   track: TrackProps;
   sourceAudio: ConcatAudioInput;
   durationInFrames: number;
 };
 
+type AssetCache = {
+  audio: Map<string, string>;
+  cover: Map<string, string>;
+};
+
+function createAssetCache(): AssetCache {
+  return {
+    audio: new Map(),
+    cover: new Map(),
+  };
+}
+
+async function copyOnce(
+  cache: Map<string, string>,
+  sourcePath: string,
+  destDir: string,
+  destName: string,
+): Promise<string> {
+  const key = path.resolve(sourcePath);
+  const existing = cache.get(key);
+  if (existing) {
+    return existing;
+  }
+  await copyFile(sourcePath, path.join(destDir, destName));
+  cache.set(key, destName);
+  return destName;
+}
+
+function playableEnd(track: ConfigTrack): number {
+  const end = track.audioEndInSeconds ?? track.durationInSeconds;
+  if (end === undefined || !Number.isFinite(end) || end <= 0) {
+    throw new Error(
+      `配置缺少 durationInSeconds: ${track.title || track.audioPath}`,
+    );
+  }
+  return end;
+}
+
 async function materializeTrack(options: {
   index: number;
-  audioPath: string;
-  lyricPath: string;
+  track: ConfigTrack;
   publicDir: string;
   fps: number;
-  offsetInSeconds: number;
-  audioEndInSeconds?: number;
-  coverPath?: string;
-  title?: string;
-  artist?: string;
-  album?: string;
+  cache: AssetCache;
 }): Promise<MaterializedTrack> {
-  const { index, audioPath, lyricPath, publicDir, fps, offsetInSeconds } =
-    options;
-
-  const [audioMeta, lyricRaw] = await Promise.all([
-    parseFile(audioPath),
-    readFile(lyricPath, "utf8"),
-  ]);
-
-  const durationSec = audioMeta.format.duration;
-  if (!durationSec || !Number.isFinite(durationSec) || durationSec <= 0) {
-    throw new Error(`无法读取音频时长: ${audioPath}`);
-  }
-  const endSec = options.audioEndInSeconds ?? durationSec;
-
-  const title =
-    options.title || audioMeta.common.title || titleFromAudioPath(audioPath);
-  const artist = options.artist || audioMeta.common.artist || "未知创作者";
-  const album = options.album || audioMeta.common.album || "未知专辑";
-  const lyricLines = parseLyricText(lyricRaw, detectLyricFormat(lyricPath));
+  const { index, track, publicDir, fps, cache } = options;
+  const endSec = playableEnd(track);
+  const lyricRaw = track.lyricPath
+    ? await readFile(track.lyricPath, "utf8")
+    : "";
+  const lyricLines = track.lyricPath
+    ? parseLyricText(lyricRaw, detectLyricFormat(track.lyricPath))
+    : [];
 
   const prefix = `track-${index}`;
-  const audioFileName = `${prefix}-audio${path.extname(audioPath) || ".bin"}`;
-  const lyricFileName = `${prefix}-lyric${path.extname(lyricPath) || ".txt"}`;
-  await copyFile(audioPath, path.join(publicDir, audioFileName));
-  await copyFile(lyricPath, path.join(publicDir, lyricFileName));
+  const audioFileName = await copyOnce(
+    cache.audio,
+    track.audioPath,
+    publicDir,
+    `audio-${cache.audio.size}${path.extname(track.audioPath) || ".bin"}`,
+  );
 
-  let coverFileName: string | undefined;
-  if (options.coverPath) {
-    coverFileName = `${prefix}-cover${path.extname(options.coverPath) || ".jpg"}`;
-    await copyFile(options.coverPath, path.join(publicDir, coverFileName));
-  } else {
-    const picture = audioMeta.common.picture?.[0];
-    if (picture) {
-      coverFileName = `${prefix}-cover${coverExtension(picture.format)}`;
-      await writeFile(path.join(publicDir, coverFileName), picture.data);
-    }
+  let lyricFileName = "";
+  if (track.lyricPath) {
+    lyricFileName = `${prefix}-lyric${path.extname(track.lyricPath) || ".txt"}`;
+    await copyFile(track.lyricPath, path.join(publicDir, lyricFileName));
+  }
+
+  let coverFileName = "";
+  if (track.coverPath) {
+    coverFileName = await copyOnce(
+      cache.cover,
+      track.coverPath,
+      publicDir,
+      `cover-${cache.cover.size}${path.extname(track.coverPath) || ".jpg"}`,
+    );
   }
 
   return {
     track: {
-      audioOffsetInSeconds: offsetInSeconds,
-      audioEndInSeconds: options.audioEndInSeconds,
+      audioOffsetInSeconds: track.offsetInSeconds,
+      audioEndInSeconds: track.audioEndInSeconds,
       audioFileUrl: audioFileName,
       lyricsFileUrl: lyricFileName,
-      coverImageUrl: coverFileName ?? "",
-      songName: title,
-      artistName: artist,
-      albumName: album,
+      coverImageUrl: coverFileName,
+      songName: track.title ?? "",
+      artistName: track.artist ?? "",
+      albumName: track.album ?? "",
       durationInSeconds: endSec,
       lyricLines: jsonSafeLyricLines(lyricLines),
     },
     sourceAudio: {
-      path: audioPath,
-      offsetInSeconds,
+      path: track.audioPath,
+      offsetInSeconds: track.offsetInSeconds,
       durationInSeconds: endSec,
     },
     durationInFrames: trackDurationInFrames(
       endSec,
-      offsetInSeconds,
+      track.offsetInSeconds,
       fps,
-      options.audioEndInSeconds,
+      track.audioEndInSeconds,
     ),
   };
 }
 
-async function prepareSingleTrackJob(args: ExportArgs): Promise<ExportJob> {
-  const publicDir = await mkdtemp(path.join(os.tmpdir(), "rmv-export-"));
-  const materialized = await materializeTrack({
-    index: 0,
-    audioPath: path.resolve(args.audio as string),
-    lyricPath: path.resolve(args.lyric as string),
-    publicDir,
-    fps: args.fps,
-    offsetInSeconds: 0,
-    coverPath: args.cover ? path.resolve(args.cover) : undefined,
-    title: args.title,
-    artist: args.artist,
-    album: args.album,
-  });
-
-  return {
-    publicDir,
-    ownsPublicDir: true,
-    title: materialized.track.songName as string,
-    fps: args.fps,
-    durationInFrames: materialized.durationInFrames,
-    outputPath: losslessOutputPath(
-      args.out ?? defaultOutputPath(materialized.track.songName as string),
-    ),
-    sourceAudios: [materialized.sourceAudio],
-    inputProps: { tracks: [materialized.track] },
-  };
+function sourceAudiosForJob(items: MaterializedTrack[]): ConcatAudioInput[] {
+  const first = items[0]?.sourceAudio;
+  if (!first) {
+    return [];
+  }
+  const shared = items.every(
+    (item) => path.resolve(item.sourceAudio.path) === path.resolve(first.path),
+  );
+  if (shared && first.offsetInSeconds === 0) {
+    const last = items[items.length - 1]?.sourceAudio;
+    return [
+      {
+        path: first.path,
+        offsetInSeconds: 0,
+        durationInSeconds: last?.durationInSeconds ?? first.durationInSeconds,
+      },
+    ];
+  }
+  return items.map((item) => item.sourceAudio);
 }
 
-async function prepareDefaultPlaylistJob(args: ExportArgs): Promise<ExportJob> {
-  const tracks = defaultPlayerProps.tracks;
-  if (!tracks.length) {
-    throw new Error("默认曲目列表为空");
+export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {
+  if (!args.config) {
+    throw new Error("需要配置文件");
   }
 
+  const loaded = await loadPreparedConfig(args.config);
   const publicDir = await mkdtemp(path.join(os.tmpdir(), "rmv-export-"));
+  const cache = createAssetCache();
   const materialized: MaterializedTrack[] = [];
-
-  for (const [index, track] of tracks.entries()) {
-    const audioPath = publicAssetToPath(track.audioFileUrl);
-    if (!existsSync(audioPath)) {
-      throw new Error(`找不到音频文件: ${audioPath}`);
-    }
-    const lyricPath = publicAssetToPath(track.lyricsFileUrl);
-    if (!existsSync(lyricPath)) {
-      throw new Error(`找不到歌词文件: ${lyricPath}`);
-    }
+  for (const [index, track] of loaded.tracks.entries()) {
     materialized.push(
       await materializeTrack({
         index,
-        audioPath,
-        lyricPath,
+        track,
         publicDir,
         fps: args.fps,
-        offsetInSeconds: track.audioOffsetInSeconds,
-        audioEndInSeconds: track.audioEndInSeconds,
-        coverPath:
-          track.coverImageUrl &&
-          !/^(https?:|data:)/i.test(track.coverImageUrl) &&
-          existsSync(publicAssetToPath(track.coverImageUrl))
-            ? publicAssetToPath(track.coverImageUrl)
-            : undefined,
-        title: track.songName,
-        artist: track.artistName,
-        album: track.albumName,
+        cache,
       }),
     );
   }
-
-  const title =
-    args.title || materialized[0]?.track.songName || "playlist";
   const durationInFrames = materialized.reduce(
     (sum, item) => sum + item.durationInFrames,
     0,
@@ -229,20 +202,13 @@ async function prepareDefaultPlaylistJob(args: ExportArgs): Promise<ExportJob> {
   return {
     publicDir,
     ownsPublicDir: true,
-    title,
+    title: loaded.title,
     fps: args.fps,
     durationInFrames: Math.max(1, durationInFrames),
-    outputPath: losslessOutputPath(args.out ?? defaultOutputPath(title)),
-    sourceAudios: materialized.map((item) => item.sourceAudio),
+    outputPath: losslessOutputPath(args.out ?? defaultOutputPath(loaded.title)),
+    sourceAudios: sourceAudiosForJob(materialized),
     inputProps: { tracks: materialized.map((item) => item.track) },
   };
-}
-
-export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {
-  if (args.audio && args.lyric) {
-    return prepareSingleTrackJob(args);
-  }
-  return prepareDefaultPlaylistJob(args);
 }
 
 export async function ensureOutputDir(outputPath: string): Promise<void> {
