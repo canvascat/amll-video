@@ -17,18 +17,14 @@
 		"@remotion/media": "4.0.526",
 		"@remotion/media-utils": "4.0.526",
 		"@remotion/renderer": "4.0.526",
-		"@remotion/tailwind-v4": "4.0.526",
 		"@remotion/zod-types": "4.0.526",
 		"@xmldom/xmldom": "^0.9.12",
-		"clsx": "^2.1.1",
 		"corner-smoothing": "^0.1.5",
 		"mediabunny": "1.56.1",
 		"music-metadata": "^11.15.0",
 		"react": "19.2.3",
 		"react-dom": "19.2.3",
 		"remotion": "4.0.526",
-		"tailwind-merge": "^3.7.0",
-		"tailwindcss": "4.0.0",
 		"zod": "4.5.4"
 	},
 	"devDependencies": {

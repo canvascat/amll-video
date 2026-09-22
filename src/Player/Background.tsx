@@ -58,7 +58,11 @@ export const PlayerBackground: FC<{
     backgroundRender.resume();
 
     const element = backgroundRender.getElement();
-    element.className = "size-full min-h-0 min-w-0 overflow-hidden";
+    element.style.width = "100%";
+    element.style.height = "100%";
+    element.style.minWidth = "0";
+    element.style.minHeight = "0";
+    element.style.overflow = "hidden";
     wrapperRef.current?.appendChild(element);
 
     return () => {
@@ -87,5 +91,5 @@ export const PlayerBackground: FC<{
     coreBGRenderRef.current?.setHasLyric(hasLyric);
   }, [hasLyric]);
 
-  return <div ref={wrapperRef} className="size-full" />;
+  return <div ref={wrapperRef} style={{ width: "100%", height: "100%" }} />;
 };

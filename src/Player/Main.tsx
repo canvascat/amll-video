@@ -8,7 +8,10 @@ export const Player: React.FC<PlayerCompositionProps> = ({ tracks = [] }) => {
 
   return (
     <AbsoluteFill
-      className="bg-black font-bold"
+      style={{
+        backgroundColor: "black",
+        fontWeight: "bold",
+      }}
     >
       <Series>
         {tracks.map((track, index) => (

@@ -5,6 +5,7 @@ import { resolvePublicAsset } from "../helpers/public-asset";
 import type { TrackProps } from "../helpers/schema";
 import { PlayerBackground } from "./Background";
 import { Cover } from "./Cover";
+import { playerFontFamily } from "./font";
 import { Lyrics } from "./Lyrics";
 import { MusicInfo } from "./MusicInfo";
 
@@ -72,26 +73,67 @@ export const SongPlayer: React.FC<TrackProps> = ({
   }, [continueRender, handle]);
 
   return (
-    <AbsoluteFill className="bg-[#111]">
+    <AbsoluteFill style={{ backgroundColor: "#111" }}>
       <Sequence from={-audioOffsetInFrames}>
-        <div className="absolute inset-0 z-0">
+        <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
           <PlayerBackground
             audioSrc={audioSrc}
             coverUrl={coverSrc}
             hasLyric={lyricLines.length > 0}
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent from-60% to-black/10" />
+          <div
+            style={{
+              pointerEvents: "none",
+              position: "absolute",
+              inset: 0,
+              backgroundImage:
+                "linear-gradient(to bottom, transparent 60%, rgb(0 0 0 / 0.1))",
+            }}
+          />
         </div>
-          {!isRendering ? <Audio src={audioSrc} /> : null}
+        {!isRendering ? <Audio src={audioSrc} /> : null}
       </Sequence>
-      <div className="relative z-[1] size-full font-player text-white">
-        <div className="grid size-full grid-cols-[0.45fr_0.55fr] gap-2">
-          <div className="flex min-w-0 flex-col items-center justify-center mix-blend-plus-lighter">
-            <div ref={coverRef} className="relative size-[min(50vh,38vw)]">
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          width: "100%",
+          height: "100%",
+          fontFamily: playerFontFamily,
+          color: "white",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            width: "100%",
+            height: "100%",
+            gridTemplateColumns: "0.45fr 0.55fr",
+            gap: "0.5rem",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              minWidth: 0,
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              mixBlendMode: "plus-lighter",
+            }}
+          >
+            <div
+              ref={coverRef}
+              style={{
+                position: "relative",
+                width: "min(50vh, 38vw)",
+                height: "min(50vh, 38vw)",
+              }}
+            >
               <Cover coverUrl={coverSrc} />
             </div>
             <MusicInfo
-              className="mt-[1.75em] w-[min(50vh,38vw)]"
+              style={{ marginTop: "1.75em", width: "min(50vh, 38vw)" }}
               songName={songName}
               artistName={artistName}
               albumName={albumName}
@@ -99,7 +141,16 @@ export const SongPlayer: React.FC<TrackProps> = ({
           </div>
           <div
             ref={lyricRef}
-            className="box-border size-full contain-paint pr-[15%] mix-blend-plus-lighter [mask-image:linear-gradient(transparent,black_10%,black_90%,transparent)]"
+            style={{
+              boxSizing: "border-box",
+              width: "100%",
+              height: "100%",
+              contain: "paint",
+              paddingRight: "15%",
+              mixBlendMode: "plus-lighter",
+              maskImage:
+                "linear-gradient(transparent, black 10%, black 90%, transparent)",
+            }}
           >
             <Lyrics lyricLines={lyricLines} alignPosition={alignPosition} />
           </div>
