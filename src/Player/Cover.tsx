@@ -1,20 +1,13 @@
 import { Squircle } from "corner-smoothing";
-import {
-  forwardRef,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type HTMLProps,
-} from "react";
+import { forwardRef, useLayoutEffect, useRef, useState, type HTMLProps } from "react";
 import { Img } from "remotion";
-import { cn } from "../lib/utils";
 
 export type CoverProps = {
   coverUrl?: string;
 } & HTMLProps<HTMLDivElement>;
 
 export const Cover = forwardRef<HTMLDivElement, CoverProps>(
-  ({ coverUrl, className, ...rest }, ref) => {
+  ({ coverUrl, style, ...rest }, ref) => {
     const frameRef = useRef<HTMLDivElement>(null);
     const [cornerRadius, setCornerRadius] = useState(20);
     const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -38,10 +31,13 @@ export const Cover = forwardRef<HTMLDivElement, CoverProps>(
 
     return (
       <div
-        className={cn(
-          "aspect-square size-full drop-shadow-[rgba(0,0,0,0.19)_0_1em_1.2em]",
-          className,
-        )}
+        style={{
+          aspectRatio: "1 / 1",
+          width: "100%",
+          height: "100%",
+          filter: "drop-shadow(rgba(0, 0, 0, 0.19) 0 1em 1.2em)",
+          ...style,
+        }}
         ref={(node) => {
           frameRef.current = node;
           if (typeof ref === "function") {
@@ -55,14 +51,25 @@ export const Cover = forwardRef<HTMLDivElement, CoverProps>(
         <Squircle
           cornerRadius={cornerRadius}
           cornerSmoothing={0.7}
-          className="size-full overflow-hidden bg-[#111]"
+          style={{
+            width: "100%",
+            height: "100%",
+            overflow: "hidden",
+            backgroundColor: "#111",
+          }}
         >
           {showCover && coverUrl ? (
             <Img
               name="Cover"
               src={coverUrl}
               onError={() => setFailedSrc(coverUrl)}
-              className="block size-full object-cover object-center"
+              style={{
+                display: "block",
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "center",
+              }}
             />
           ) : null}
         </Squircle>

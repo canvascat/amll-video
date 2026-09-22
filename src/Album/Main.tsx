@@ -9,6 +9,7 @@ import { resolvePublicAsset } from "../helpers/public-asset";
 import type { PlayerCompositionProps } from "../helpers/schema";
 import { trackIndexAtAudioSeconds } from "../helpers/track-duration";
 import { Cover } from "../Player/Cover";
+import { playerFontFamily } from "../Player/font";
 import { MusicInfo } from "../Player/MusicInfo";
 import { BlurredCoverBackground } from "./BlurredCoverBackground";
 
@@ -32,17 +33,48 @@ export const AlbumPlayer: React.FC<PlayerCompositionProps> = ({
   const audioSrc = resolvePublicAsset(album?.audioFileUrl);
 
   return (
-    <AbsoluteFill className="bg-[#111] font-bold">
-      <div className="absolute inset-0 z-0">
+    <AbsoluteFill style={{ backgroundColor: "#111", fontWeight: "bold" }}>
+      <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
         <BlurredCoverBackground coverUrl={coverSrc} />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent from-60% to-black/10" />
+        <div
+          style={{
+            pointerEvents: "none",
+            position: "absolute",
+            inset: 0,
+            backgroundImage:
+              "linear-gradient(to bottom, transparent 60%, rgb(0 0 0 / 0.1))",
+          }}
+        />
       </div>
-      <div className="relative z-[1] flex size-full flex-col items-center justify-center font-player text-white">
-        <div className="relative size-[min(56vh,42vw)]">
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          width: "100%",
+          height: "100%",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: playerFontFamily,
+          color: "white",
+        }}
+      >
+        <div
+          style={{
+            position: "relative",
+            width: "min(56vh, 42vw)",
+            height: "min(56vh, 42vw)",
+          }}
+        >
           <Cover coverUrl={coverSrc} />
         </div>
         <MusicInfo
-          className="mt-[1.75em] w-[min(56vh,42vw)] text-center"
+          style={{
+            marginTop: "1.75em",
+            width: "min(56vh, 42vw)",
+            textAlign: "center",
+          }}
           songName={current?.songName ?? ""}
           artistName={album?.artistName ?? ""}
           albumName={album?.albumName ?? ""}

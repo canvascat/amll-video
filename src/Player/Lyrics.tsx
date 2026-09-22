@@ -3,16 +3,15 @@ import {
   LyricPlayer,
   type LyricLine,
 } from "@applemusic-like-lyrics/core";
-import type { FC } from "react";
+import type { CSSProperties, FC } from "react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useCurrentFrame, useVideoConfig } from "remotion";
-import { cn } from "../lib/utils";
 
 export const Lyrics: FC<{
   lyricLines: LyricLine[];
   alignPosition: number;
-  className?: string;
-}> = ({ lyricLines, alignPosition, className }) => {
+  style?: CSSProperties;
+}> = ({ lyricLines, alignPosition, style }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const currentTimeMs = Math.floor((frame / fps) * 1000);
@@ -105,10 +104,14 @@ export const Lyrics: FC<{
   return (
     <div
       ref={wrapperRef}
-      className={cn(
-        "size-full [--amll-lp-font-size:max(max(5vh,2.5vw),14px)]",
-        className,
-      )}
+      style={
+        {
+          width: "100%",
+          height: "100%",
+          "--amll-lp-font-size": "max(max(5vh, 2.5vw), 14px)",
+          ...style,
+        } as CSSProperties
+      }
     />
   );
 };

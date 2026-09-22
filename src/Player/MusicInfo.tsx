@@ -1,33 +1,50 @@
-import type { FC } from "react";
+import type { CSSProperties, FC } from "react";
 import { Interactive } from "remotion";
-import { cn } from "../lib/utils";
 
 export const MusicInfo: FC<{
   songName: string;
   artistName: string;
   albumName?: string;
-  className?: string;
-}> = ({ songName, artistName, albumName = "", className }) => {
+  style?: CSSProperties;
+}> = ({ songName, artistName, albumName = "", style }) => {
   const artistLine = [artistName, albumName]
     .map((value) => value.trim())
     .filter(Boolean)
     .join(" - ");
   return (
     <div
-      className={cn(
-        "min-w-0 text-white text-[length:max(2vh,1em)] leading-[1.25em]",
-        className,
-      )}
+      style={{
+        minWidth: 0,
+        color: "white",
+        fontSize: "max(2vh, 1em)",
+        lineHeight: "1.25em",
+        ...style,
+      }}
     >
       <Interactive.Div
         name="Song name"
-        className="min-w-0 truncate font-medium tracking-[0.4px] opacity-90"
+        style={{
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          fontWeight: 500,
+          letterSpacing: "0.4px",
+          opacity: 0.9,
+        }}
       >
         {songName}
       </Interactive.Div>
       <Interactive.Div
         name="Artist"
-        className="truncate font-normal tracking-[0.4px] opacity-45"
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          fontWeight: 400,
+          letterSpacing: "0.4px",
+          opacity: 0.45,
+        }}
       >
         {artistLine}
       </Interactive.Div>

@@ -1,5 +1,4 @@
 import type { FC } from "react";
-import "./index.css";
 import "@applemusic-like-lyrics/core/style.css";
 import { Composition } from "remotion";
 import { AlbumPlayer } from "./Album/Main";
