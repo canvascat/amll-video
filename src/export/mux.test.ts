@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  buildHoldStillsArgs,
+  buildImageConcatList,
   buildMuxArgs,
   collapseSharedSourceAudios,
   type ConcatAudioInput,
@@ -42,4 +44,21 @@ test("不同文件才需要拼接", () => {
     { path: "b.flac", offsetInSeconds: 0, durationInSeconds: 80 },
   ]);
   assert.equal(collapsed.length, 2);
+});
+
+test("专辑静帧 concat 列表按曲目时长铺开，并重复最后一帧", () => {
+  const list = buildImageConcatList([
+    { path: "/tmp/cue-01.png", durationSeconds: 207.827 },
+    { path: "/tmp/cue-02.png", durationSeconds: 263.986 },
+  ]);
+  assert.match(list, /^ffconcat version 1\.0\n/);
+  assert.match(list, /file '\/tmp\/cue-01\.png'\nduration 207\.827/);
+  assert.match(list, /file '\/tmp\/cue-02\.png'\nduration 263\.986\nfile '\/tmp\/cue-02\.png'\n$/);
+});
+
+test("铺开静帧用 fps 滤镜，不混用 fps_mode 和 -r", () => {
+  const args = buildHoldStillsArgs("album-stills.txt", "video-only.mp4", 30);
+  assert.equal(args[args.indexOf("-vf") + 1], "fps=30");
+  assert.ok(!args.includes("-vsync"));
+  assert.ok(!args.includes("-fps_mode"));
 });

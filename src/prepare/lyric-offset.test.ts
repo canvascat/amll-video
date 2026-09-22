@@ -25,6 +25,21 @@ test("shiftLyricLines 把整句和逐字时间一起平移", () => {
   assert.equal(shifted[1]?.startTime, 1600);
 });
 
+test("负向偏移后时间戳不会小于 0，整段落在 0 之前的行丢掉", () => {
+  const shifted = shiftLyricLines(
+    [line(0, "credit"), line(1000, "a"), line(20000, "b")],
+    -14450,
+  );
+  assert.equal(shifted.length, 1);
+  assert.equal(shifted[0]?.startTime, 5550);
+  assert.ok(shifted.every((item) => item.startTime >= 0));
+  assert.ok(
+    shifted.every((item) =>
+      item.words.every((word) => word.startTime >= 0 && word.endTime >= 0),
+    ),
+  );
+});
+
 test("歌词时间轴整体偏晚时，估出负向偏移", () => {
   const hopMs = 50;
   const envelope = new Array(400).fill(0.05);

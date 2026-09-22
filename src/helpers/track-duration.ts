@@ -24,3 +24,78 @@ export function trackDurationInFrames(
     ),
   );
 }
+
+export type TimedTrack = {
+  durationInSeconds?: number;
+  audioOffsetInSeconds: number;
+  audioEndInSeconds?: number;
+};
+
+export function trackIndexAtFrame(
+  tracks: readonly TimedTrack[],
+  frame: number,
+  fps: number,
+): number {
+  if (tracks.length === 0) {
+    return 0;
+  }
+
+  let cursor = 0;
+  for (let index = 0; index < tracks.length; index++) {
+    const track = tracks[index];
+    if (!track) {
+      continue;
+    }
+    const duration = trackDurationInFrames(
+      track.durationInSeconds ?? 0,
+      track.audioOffsetInSeconds,
+      fps,
+      track.audioEndInSeconds,
+    );
+    if (frame < cursor + duration) {
+      return index;
+    }
+    cursor += duration;
+  }
+
+  return tracks.length - 1;
+}
+
+function cueEndSeconds(track: TimedTrack): number {
+  return track.audioEndInSeconds ?? track.durationInSeconds ?? track.audioOffsetInSeconds;
+}
+
+export function trackIndexAtAudioSeconds(
+  tracks: readonly TimedTrack[],
+  timeSeconds: number,
+): number {
+  if (tracks.length === 0) {
+    return 0;
+  }
+
+  for (let index = 0; index < tracks.length; index++) {
+    const track = tracks[index];
+    if (!track) {
+      continue;
+    }
+    if (timeSeconds < cueEndSeconds(track)) {
+      return index;
+    }
+  }
+
+  return tracks.length - 1;
+}
+
+export function albumSpanInFrames(
+  tracks: readonly TimedTrack[],
+  fps: number,
+): number {
+  const first = tracks[0];
+  const last = tracks[tracks.length - 1];
+  if (!first || !last) {
+    return 1;
+  }
+  const start = first.audioOffsetInSeconds;
+  const end = cueEndSeconds(last);
+  return Math.max(1, Math.floor(Math.max(0, end - start) * fps));
+}

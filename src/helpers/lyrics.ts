@@ -84,7 +84,7 @@ export function parseLyricText(raw: string, format: LyricFormat): LyricLine[] {
       lines = parseLys(raw);
       break;
   }
-  return lines.map(mapLyric);
+  return sanitizeLyricTimestamps(lines.map(mapLyric));
 }
 
 export function shiftLyricLines(
@@ -92,18 +92,54 @@ export function shiftLyricLines(
   offsetMs: number,
 ): LyricLine[] {
   if (!offsetMs) {
-    return [...lines];
+    return sanitizeLyricTimestamps(lines);
   }
-  return lines.map((line) => ({
-    ...line,
-    startTime: shiftTime(line.startTime, offsetMs),
-    endTime: shiftTime(line.endTime, offsetMs),
-    words: line.words.map((word) => ({
-      ...word,
-      startTime: shiftTime(word.startTime, offsetMs),
-      endTime: shiftTime(word.endTime, offsetMs),
+  return sanitizeLyricTimestamps(
+    lines.map((line) => ({
+      ...line,
+      startTime: shiftTime(line.startTime, offsetMs),
+      endTime: shiftTime(line.endTime, offsetMs),
+      words: line.words.map((word) => ({
+        ...word,
+        startTime: shiftTime(word.startTime, offsetMs),
+        endTime: shiftTime(word.endTime, offsetMs),
+      })),
     })),
-  }));
+  );
+}
+
+export function sanitizeLyricTimestamps(
+  lines: readonly LyricLine[],
+): LyricLine[] {
+  return lines.flatMap((line) => {
+    const words = line.words
+      .map((word) => ({
+        ...word,
+        startTime: clampNonNegativeTime(word.startTime),
+        endTime: clampNonNegativeTime(word.endTime),
+      }))
+      .filter((word) => !endedAtOrBeforeZero(word.endTime));
+    const startTime = clampNonNegativeTime(line.startTime);
+    const endTime = clampNonNegativeTime(line.endTime);
+    if (endedAtOrBeforeZero(endTime)) {
+      return [];
+    }
+    if (Number.isFinite(endTime) && startTime > endTime) {
+      return [];
+    }
+    return [{ ...line, startTime, endTime, words }];
+  });
+}
+
+function clampNonNegativeTime(value: number): number {
+  if (!Number.isFinite(value)) {
+    return value;
+  }
+  return Math.max(0, value);
+}
+
+function endedAtOrBeforeZero(endTime: number): boolean {
+  return Number.isFinite(endTime) && endTime <= 0;
 }
 
 function shiftTime(value: number, offsetMs: number): number {
