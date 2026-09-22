@@ -91,5 +91,17 @@ export const PlayerBackground: FC<{
     coreBGRenderRef.current?.setHasLyric(hasLyric);
   }, [hasLyric]);
 
-  return <div ref={wrapperRef} style={{ width: "100%", height: "100%" }} />;
+  return (
+    <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
+      <div
+        ref={wrapperRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          filter: "blur(48px)",
+          transform: "scale(1.15)",
+        }}
+      />
+    </div>
+  );
 };

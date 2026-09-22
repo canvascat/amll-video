@@ -73,7 +73,11 @@ export const SongPlayer: React.FC<TrackProps> = ({
   }, [continueRender, handle]);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: "#111" }}>
+    <AbsoluteFill
+      style={{
+        backgroundColor: "#111"
+      }}
+    >
       <Sequence from={-audioOffsetInFrames}>
         <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
           <PlayerBackground
