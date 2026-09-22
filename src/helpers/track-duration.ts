@@ -31,36 +31,6 @@ export type TimedTrack = {
   audioEndInSeconds?: number;
 };
 
-export function trackIndexAtFrame(
-  tracks: readonly TimedTrack[],
-  frame: number,
-  fps: number,
-): number {
-  if (tracks.length === 0) {
-    return 0;
-  }
-
-  let cursor = 0;
-  for (let index = 0; index < tracks.length; index++) {
-    const track = tracks[index];
-    if (!track) {
-      continue;
-    }
-    const duration = trackDurationInFrames(
-      track.durationInSeconds ?? 0,
-      track.audioOffsetInSeconds,
-      fps,
-      track.audioEndInSeconds,
-    );
-    if (frame < cursor + duration) {
-      return index;
-    }
-    cursor += duration;
-  }
-
-  return tracks.length - 1;
-}
-
 function cueEndSeconds(track: TimedTrack): number {
   return track.audioEndInSeconds ?? track.durationInSeconds ?? track.audioOffsetInSeconds;
 }

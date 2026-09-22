@@ -23,7 +23,8 @@ export type ExportArgs = {
 
 export const USAGE = `用法: nub run export -- <配置.json> [选项]
 
-读取备料生成的 json（单曲或专辑），相对配置文件所在目录解析音频 / 歌词 / 封面。
+读取备料生成的 json，相对配置文件所在目录解析音频 / 歌词 / 封面。
+不带 --album 时只接受单曲；多首整轨请加 --album。
 
 必填:
   --config  配置文件路径（也可直接作为位置参数）
