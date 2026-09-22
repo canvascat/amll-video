@@ -7,6 +7,7 @@ import {
 } from "@applemusic-like-lyrics/lyric";
 import { TTMLParser, toAmllLyrics } from "@applemusic-like-lyrics/ttml";
 import { DOMParser as XmlDomParser } from "@xmldom/xmldom";
+import { attachQrcAnnotations } from "./qrc-aux";
 
 export type LyricFormat = "lrc" | "ttml" | "yrc" | "qrc" | "lys";
 
@@ -63,28 +64,87 @@ export function mapLyric(line: MappableLyricLine): LyricLine {
   };
 }
 
+const QRC_TRANSLATION_MARK = "[rmv-translation]";
+const QRC_ROMAN_MARK = "[rmv-roman]";
+
+function splitQrcBundle(raw: string): {
+  qrc: string;
+  translation: string;
+  roman: string;
+} {
+  const transAt = raw.indexOf(QRC_TRANSLATION_MARK);
+  const romanAt = raw.indexOf(QRC_ROMAN_MARK);
+  const cuts = [transAt, romanAt].filter((index) => index >= 0);
+  const qrcEnd = cuts.length > 0 ? Math.min(...cuts) : raw.length;
+  const sliceMark = (mark: string, start: number): string => {
+    if (start < 0) {
+      return "";
+    }
+    const from = start + mark.length;
+    const next = cuts.filter((index) => index > start);
+    const to = next.length > 0 ? Math.min(...next) : raw.length;
+    return raw.slice(from, to);
+  };
+  return {
+    qrc: raw.slice(0, qrcEnd),
+    translation: sliceMark(QRC_TRANSLATION_MARK, transAt),
+    roman: sliceMark(QRC_ROMAN_MARK, romanAt),
+  };
+}
+
+function parsedLines(raw: string, format: "lrc" | "qrc"): LyricLine[] {
+  const text = raw.trim();
+  if (!text) {
+    return [];
+  }
+  const parsed = format === "lrc" ? parseLrc(text) : parseQrc(text);
+  return sanitizeLyricTimestamps(parsed.map(mapLyric));
+}
+
+function extractKanaTag(qrc: string): string {
+  const matches = qrc.match(/\[kana:[^\]]*\]/gi);
+  return matches?.[matches.length - 1] ?? "";
+}
+
 export function parseLyricText(raw: string, format: LyricFormat): LyricLine[] {
   let lines: MappableLyricLine[];
+  let translation = "";
+  let roman = "";
+  let body = raw;
+  if (format === "qrc") {
+    const bundle = splitQrcBundle(raw);
+    body = bundle.qrc;
+    translation = bundle.translation;
+    roman = bundle.roman;
+  }
   switch (format) {
     case "lrc":
-      lines = parseLrc(raw);
+      lines = parseLrc(body);
       break;
     case "yrc":
-      lines = parseYrc(raw);
+      lines = parseYrc(body);
       break;
     case "qrc":
-      lines = parseQrc(raw);
+      lines = parseQrc(body);
       break;
     case "ttml":
       lines = toAmllLyrics(
-        TTMLParser.parse(raw, { domParser: new XmlDomParser() }),
+        TTMLParser.parse(body, { domParser: new XmlDomParser() }),
       ).lines;
       break;
     case "lys":
-      lines = parseLys(raw);
+      lines = parseLys(body);
       break;
   }
-  return sanitizeLyricTimestamps(lines.map(mapLyric));
+  const parsed = sanitizeLyricTimestamps(lines.map(mapLyric));
+  if (format !== "qrc") {
+    return parsed;
+  }
+  return attachQrcAnnotations(parsed, {
+    translations: parsedLines(translation, "lrc"),
+    romans: parsedLines(roman, "qrc"),
+    kana: extractKanaTag(body),
+  });
 }
 
 export function shiftLyricLines(
@@ -103,6 +163,11 @@ export function shiftLyricLines(
         ...word,
         startTime: shiftTime(word.startTime, offsetMs),
         endTime: shiftTime(word.endTime, offsetMs),
+        ruby: word.ruby?.map((ruby) => ({
+          ...ruby,
+          startTime: shiftTime(ruby.startTime, offsetMs),
+          endTime: shiftTime(ruby.endTime, offsetMs),
+        })),
       })),
     })),
   );
@@ -117,6 +182,13 @@ export function sanitizeLyricTimestamps(
         ...word,
         startTime: clampNonNegativeTime(word.startTime),
         endTime: clampNonNegativeTime(word.endTime),
+        ruby: word.ruby
+          ?.map((ruby) => ({
+            ...ruby,
+            startTime: clampNonNegativeTime(ruby.startTime),
+            endTime: clampNonNegativeTime(ruby.endTime),
+          }))
+          .filter((ruby) => !endedAtOrBeforeZero(ruby.endTime)),
       }))
       .filter((word) => !endedAtOrBeforeZero(word.endTime));
     const startTime = clampNonNegativeTime(line.startTime);

@@ -1,6 +1,7 @@
 import { ALL_FORMATS, Input, UrlSource } from "mediabunny";
 import type { CalculateMetadataFunction } from "remotion";
 import { DEFAULT_FPS } from "../remotion/constants";
+import { stripLyricMetadata } from "./lyric-metadata";
 import { loadLyricLines, shiftLyricLines } from "./lyrics";
 import type {
   AlbumCompositionProps,
@@ -32,7 +33,10 @@ async function resolveTrack(
     );
   }
   if (loadLyrics) {
-    lyricLines = shiftLyricLines(lyricLines, track.lyricOffsetMs ?? 0);
+    lyricLines = stripLyricMetadata(
+      shiftLyricLines(lyricLines, track.lyricOffsetMs ?? 0),
+      { title: track.songName, artists: track.artistName },
+    );
   }
 
   let durationInSeconds = track.durationInSeconds;

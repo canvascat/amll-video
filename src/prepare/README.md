@@ -147,7 +147,7 @@ nub run prepare -- --audio "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新�
 | --- | --- | --- |
 | 网易云 | 搜索 + lyric（优先 yrc，否则 lrc+翻译） | 命中后再试 AMLL TTML |
 | QQ 音乐 | 搜索 + 明文 lrc | 命中后再试 AMLL TTML；不解密 QRC |
-| 酷狗 | 搜索 + 明文 lrc | 不解密 KRC |
+| 酷狗 | 搜索；逐字候选解密 KRC 并写成 YRC，否则用明文 lrc | KRC 头 4 字节后异或再 inflate |
 | LRCLIB | `/api/get`（先带专辑再去掉）→ `/api/search` | 只要 synced LRC |
 | AMLL TTML | `amlldb.bikonoo.com/ncm-lyrics\|qq-lyrics/{id}.ttml` | 有平台 ID 才拉 |
 | iTunes Search | 补封面（600×600）和仍空的身份字段 | 并行查默认店 + hk + jp；罗马音歌手名放宽匹配 |
@@ -186,6 +186,7 @@ const { jsonPath, hasLyrics } = await writeMaterials({
 | `match.ts` | 归一化、时长优先选版本 |
 | `lyric-offset.ts` | 歌词常量偏移估算 |
 | `audio-envelope.ts` | 用 ffmpeg 读人声频段能量包络 |
+| `krc.ts` | 解密酷狗 KRC，并转成 YRC |
 | `lyric-quality.ts` | 格式优先级、翻译合并、解析校验 |
 | `http.ts` | 超时、UA、JSON/JSONP |
 | `providers/*` | 各源搜索与取词 |
@@ -195,5 +196,5 @@ const { jsonPath, hasLyrics } = await writeMaterials({
 
 - 不把整轨切成每首歌一个音频文件
 - 不拉播放地址、Cookie、登录
-- 不解密 KRC / 加密 QRC
+- 不解密 QQ 音乐的加密 QRC
 - 不做持久缓存（只有进程内超时与失败隔离）
