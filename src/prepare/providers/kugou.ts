@@ -1,3 +1,4 @@
+import { decryptKrc, krcToYrc, prefersKugouKrc } from "../krc";
 import { pickBestCandidate } from "../match";
 import { fetchJson, providerSignal } from "../http";
 import { validateLyric } from "../lyric-quality";
@@ -16,8 +17,15 @@ type SearchResponse = {
   data?: { info?: SearchSong[] };
 };
 
+type KugouLyricHit = {
+  id?: string;
+  accesskey?: string;
+  krctype?: number;
+  contenttype?: number;
+};
+
 type LyricSearch = {
-  candidates?: Array<{ id?: string; accesskey?: string }>;
+  candidates?: KugouLyricHit[];
 };
 
 type LyricDownload = {
@@ -63,6 +71,47 @@ async function albumCover(
   }
 }
 
+async function downloadKugouText(
+  hit: KugouLyricHit,
+  fmt: "krc" | "lrc",
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const download = await fetchJson<LyricDownload>(
+    `http://lyrics.kugou.com/download?ver=1&client=pc&id=${encodeURIComponent(hit.id ?? "")}&accesskey=${encodeURIComponent(hit.accesskey ?? "")}&fmt=${fmt}&charset=utf8`,
+    { signal },
+  );
+  return download.content?.trim() || null;
+}
+
+async function downloadKugouLyric(
+  hit: KugouLyricHit,
+  signal?: AbortSignal,
+): Promise<{ format: "yrc" | "lrc"; content: string } | null> {
+  if (prefersKugouKrc(hit)) {
+    try {
+      const packed = await downloadKugouText(hit, "krc", signal);
+      if (packed) {
+        const yrc = krcToYrc(decryptKrc(packed));
+        if (validateLyric(yrc, "yrc")) {
+          return { format: "yrc", content: yrc };
+        }
+      }
+    } catch {
+      // 逐字稿解不开时退回行级 LRC
+    }
+  }
+
+  const packed = await downloadKugouText(hit, "lrc", signal);
+  if (!packed) {
+    return null;
+  }
+  const lrc = Buffer.from(packed, "base64").toString("utf8");
+  if (!validateLyric(lrc, "lrc")) {
+    return null;
+  }
+  return { format: "lrc", content: lrc };
+}
+
 export async function lookupKugou(
   query: TrackQuery,
   keyword: string,
@@ -96,21 +145,14 @@ export async function lookupKugou(
       return null;
     }
 
-    const download = await fetchJson<LyricDownload>(
-      `http://lyrics.kugou.com/download?ver=1&client=pc&id=${encodeURIComponent(hit.id)}&accesskey=${encodeURIComponent(hit.accesskey)}&fmt=lrc&charset=utf8`,
-      { signal },
-    );
-    if (!download.content) {
-      return null;
-    }
-    const lrc = Buffer.from(download.content, "base64").toString("utf8");
-    if (!validateLyric(lrc, "lrc")) {
+    const lyric = await downloadKugouLyric(hit, signal);
+    if (!lyric) {
       return null;
     }
     return {
       source: "kugou",
-      format: "lrc",
-      content: lrc,
+      format: lyric.format,
+      content: lyric.content,
       candidate: best,
       coverUrl: await albumCover(best.extra?.albumId ?? "", signal),
     };

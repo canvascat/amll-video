@@ -1,13 +1,12 @@
+import { isLyricMetadataLine } from "../helpers/lyric-metadata";
 import type { LyricFormat } from "../helpers/lyrics";
 import { parseLyricText } from "../helpers/lyrics";
 
-const CREDIT_LINE =
-  /^(作曲|作词|编曲|制作人|Lyricist|Composer|Producer)\s*[:：]/i;
 const MUSIC_MARK = /^(（|\()?music(）|\))?$/i;
 
 export function isLyricCreditLine(text: string): boolean {
   const trimmed = text.trim();
-  return CREDIT_LINE.test(trimmed) || MUSIC_MARK.test(trimmed);
+  return isLyricMetadataLine(trimmed) || MUSIC_MARK.test(trimmed);
 }
 
 export function isUsableParsedLyric(
