@@ -3,7 +3,7 @@ import type { CalculateMetadataFunction } from "remotion";
 import { DEFAULT_FPS } from "../remotion/constants";
 import { loadLyricLines, shiftLyricLines } from "./lyrics";
 import type { PlayerCompositionProps, TrackProps } from "./schema";
-import { trackDurationInFrames } from "./track-duration";
+import { albumSpanInFrames, trackDurationInFrames } from "./track-duration";
 
 type LegacyPlayerProps = PlayerCompositionProps & Partial<TrackProps>;
 
@@ -40,20 +40,21 @@ const hasPositiveDuration = (value: number | undefined): value is number =>
 async function resolveTrack(
   track: TrackProps,
   abortSignal: AbortSignal | undefined,
+  options?: { lyrics?: boolean },
 ): Promise<TrackProps> {
   if (isBlank(track.audioFileUrl)) {
     throw new Error("曲目缺少 audioFileUrl");
   }
 
-  let lyricLines = track.lyricLines ?? [];
-  if (lyricLines.length === 0 && !isBlank(track.lyricsFileUrl)) {
+  const loadLyrics = options?.lyrics !== false;
+  let lyricLines = loadLyrics ? (track.lyricLines ?? []) : [];
+  if (loadLyrics && lyricLines.length === 0 && !isBlank(track.lyricsFileUrl)) {
     lyricLines = await loadLyricLines(track.lyricsFileUrl, abortSignal).catch(
       () => [],
     );
   }
-  const lyricOffsetMs = track.lyricOffsetMs ?? 0;
-  if (lyricOffsetMs) {
-    lyricLines = shiftLyricLines(lyricLines, lyricOffsetMs);
+  if (loadLyrics) {
+    lyricLines = shiftLyricLines(lyricLines, track.lyricOffsetMs ?? 0);
   }
 
   let durationInSeconds = track.durationInSeconds;
@@ -71,35 +72,41 @@ async function resolveTrack(
 
   return {
     ...track,
-    lyricOffsetMs: 0,
+    lyricOffsetMs: loadLyrics ? 0 : track.lyricOffsetMs,
     durationInSeconds,
     lyricLines,
   };
 }
 
-export const calculatePlayerMetadata: CalculateMetadataFunction<
-  PlayerCompositionProps
-> = async ({ props, abortSignal }) => {
+async function calculateMetadata(
+  props: PlayerCompositionProps,
+  abortSignal: AbortSignal | undefined,
+  options: { lyrics: boolean },
+) {
   const input = inputTracks(props);
   if (!input.length) {
     throw new Error("至少需要一首歌曲");
   }
 
   const tracks = await Promise.all(
-    input.map((track) => resolveTrack(track, abortSignal)),
+    input.map((track) => resolveTrack(track, abortSignal, options)),
   );
 
-  const durationInFrames = tracks.reduce(
-    (sum, track) =>
-      sum +
-      trackDurationInFrames(
-        track.durationInSeconds as number,
-        track.audioOffsetInSeconds,
-        DEFAULT_FPS,
-        track.audioEndInSeconds,
-      ),
-    0,
-  );
+  const durationInFrames = options.lyrics
+    ? tracks.reduce(
+        (sum, track) =>
+          sum +
+          trackDurationInFrames(
+            track.durationInSeconds as number,
+            track.audioOffsetInSeconds,
+            DEFAULT_FPS,
+            track.audioEndInSeconds,
+          ),
+        0,
+      )
+    : props.cueStills
+      ? tracks.length
+      : albumSpanInFrames(tracks, DEFAULT_FPS);
 
   return {
     fps: DEFAULT_FPS,
@@ -109,4 +116,16 @@ export const calculatePlayerMetadata: CalculateMetadataFunction<
       tracks,
     },
   };
+}
+
+export const calculatePlayerMetadata: CalculateMetadataFunction<
+  PlayerCompositionProps
+> = async ({ props, abortSignal }) => {
+  return calculateMetadata(props, abortSignal, { lyrics: true });
+};
+
+export const calculateAlbumMetadata: CalculateMetadataFunction<
+  PlayerCompositionProps
+> = async ({ props, abortSignal }) => {
+  return calculateMetadata(props, abortSignal, { lyrics: false });
 };

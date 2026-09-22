@@ -21,6 +21,12 @@ test("可显式指定并行路数或百分比", () => {
 test("未指定时用默认并行路数", () => {
   const args = parseExportArgs(["album.json"]);
   assert.equal(args.concurrency, String(defaultRenderConcurrency()));
+  assert.equal(args.album, false);
+});
+
+test("--album 走专辑播放器", () => {
+  const args = parseExportArgs(["album.json", "--album"]);
+  assert.equal(args.album, true);
 });
 
 test("无效并行路数会报错", () => {

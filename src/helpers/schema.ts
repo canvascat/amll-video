@@ -17,6 +17,7 @@ export const trackSchema = z.object({
 
 export const playerCompositionSchema = z.object({
   tracks: z.array(trackSchema).min(1),
+  cueStills: z.boolean().optional(),
 });
 
 export type TrackProps = Omit<z.infer<typeof trackSchema>, "lyricLines"> & {
@@ -25,4 +26,5 @@ export type TrackProps = Omit<z.infer<typeof trackSchema>, "lyricLines"> & {
 
 export type PlayerCompositionProps = {
   tracks: TrackProps[];
+  cueStills?: boolean;
 };

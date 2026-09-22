@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import { buildMuxChapterArgs } from "./chapters";
 
 export type ConcatAudioInput = {
   path: string;
@@ -32,6 +34,56 @@ export function collapseSharedSourceAudios(
 
 export function audioPlayableSeconds(input: ConcatAudioInput): number {
   return Math.max(0.001, input.durationInSeconds - input.offsetInSeconds);
+}
+
+export type CueStill = {
+  path: string;
+  durationSeconds: number;
+};
+
+export function buildImageConcatList(stills: readonly CueStill[]): string {
+  if (stills.length === 0) {
+    throw new Error("至少需要一帧专辑画面");
+  }
+  const quote = (filePath: string) => filePath.replace(/'/g, "'\\''");
+  const lines = ["ffconcat version 1.0"];
+  for (const still of stills) {
+    lines.push(`file '${quote(still.path)}'`);
+    lines.push(`duration ${still.durationSeconds}`);
+  }
+  const last = stills[stills.length - 1];
+  if (last) {
+    lines.push(`file '${quote(last.path)}'`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+export function buildHoldStillsArgs(
+  concatPath: string,
+  outputPath: string,
+  fps: number,
+): string[] {
+  return [
+    "-y",
+    "-f",
+    "concat",
+    "-safe",
+    "0",
+    "-i",
+    concatPath,
+    "-vf",
+    `fps=${fps}`,
+    "-pix_fmt",
+    "yuv420p",
+    "-c:v",
+    "libx264",
+    "-tune",
+    "stillimage",
+    "-preset",
+    "ultrafast",
+    "-an",
+    outputPath,
+  ];
 }
 
 export function buildMuxArgs(
@@ -157,4 +209,29 @@ export async function muxOriginalAudio(
       ? { startSeconds: audio.offsetInSeconds, durationSeconds: playable }
       : undefined;
   await runFfmpeg(buildMuxArgs(videoPath, audio.path, outputPath, trim));
+}
+
+export async function muxChapters(
+  videoPath: string,
+  metadataPath: string,
+  outputPath: string,
+): Promise<void> {
+  await runFfmpeg(buildMuxChapterArgs(videoPath, metadataPath, outputPath));
+}
+
+export async function holdStillsToVideo(
+  stills: readonly CueStill[],
+  outputPath: string,
+  fps: number,
+): Promise<void> {
+  const concatPath = path.join(path.dirname(outputPath), "album-stills.txt");
+  await writeFile(concatPath, buildImageConcatList(stills));
+  await runFfmpeg(buildHoldStillsArgs(concatPath, outputPath, fps));
+}
+
+export async function extractVideoFrames(
+  videoPath: string,
+  outputPattern: string,
+): Promise<void> {
+  await runFfmpeg(["-y", "-i", videoPath, "-fps_mode", "passthrough", outputPattern]);
 }
