@@ -15,7 +15,9 @@ export const trackSchema = z.object({
   lyricLines: z.array(z.any()).optional(),
 });
 
-export const playerCompositionSchema = z.object({
+export const playerCompositionSchema = trackSchema;
+
+export const albumCompositionSchema = z.object({
   tracks: z.array(trackSchema).min(1),
   cueStills: z.boolean().optional(),
 });
@@ -24,7 +26,9 @@ export type TrackProps = Omit<z.infer<typeof trackSchema>, "lyricLines"> & {
   lyricLines?: LyricLine[];
 };
 
-export type PlayerCompositionProps = {
+export type PlayerCompositionProps = TrackProps;
+
+export type AlbumCompositionProps = {
   tracks: TrackProps[];
   cueStills?: boolean;
 };

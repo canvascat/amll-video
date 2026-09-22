@@ -6,8 +6,11 @@ import {
   calculateAlbumMetadata,
   calculatePlayerMetadata,
 } from "./helpers/calculate-metadata";
-import { defaultPlayerProps } from "./helpers/default-props";
-import { playerCompositionSchema } from "./helpers/schema";
+import { defaultAlbumProps, defaultPlayerProps } from "./helpers/default-props";
+import {
+  albumCompositionSchema,
+  playerCompositionSchema,
+} from "./helpers/schema";
 import { Player } from "./Player/Main";
 import {
   ALBUM_COMPOSITION_ID,
@@ -38,8 +41,8 @@ export const RemotionRoot: FC = () => {
         height={VIDEO_HEIGHT}
         fps={DEFAULT_FPS}
         durationInFrames={300}
-        schema={playerCompositionSchema}
-        defaultProps={defaultPlayerProps}
+        schema={albumCompositionSchema}
+        defaultProps={defaultAlbumProps}
         calculateMetadata={calculateAlbumMetadata}
       />
     </>

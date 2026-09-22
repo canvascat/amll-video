@@ -2,34 +2,12 @@ import { ALL_FORMATS, Input, UrlSource } from "mediabunny";
 import type { CalculateMetadataFunction } from "remotion";
 import { DEFAULT_FPS } from "../remotion/constants";
 import { loadLyricLines, shiftLyricLines } from "./lyrics";
-import type { PlayerCompositionProps, TrackProps } from "./schema";
+import type {
+  AlbumCompositionProps,
+  PlayerCompositionProps,
+  TrackProps,
+} from "./schema";
 import { albumSpanInFrames, trackDurationInFrames } from "./track-duration";
-
-type LegacyPlayerProps = PlayerCompositionProps & Partial<TrackProps>;
-
-function inputTracks(props: PlayerCompositionProps): TrackProps[] {
-  if (Array.isArray(props.tracks)) {
-    return props.tracks;
-  }
-  const legacy = props as LegacyPlayerProps;
-  if (legacy.audioFileUrl) {
-    return [
-      {
-        audioFileUrl: legacy.audioFileUrl,
-        lyricsFileUrl: legacy.lyricsFileUrl ?? "",
-        audioOffsetInSeconds: legacy.audioOffsetInSeconds ?? 0,
-        audioEndInSeconds: legacy.audioEndInSeconds,
-        coverImageUrl: legacy.coverImageUrl,
-        songName: legacy.songName,
-        artistName: legacy.artistName,
-        albumName: legacy.albumName,
-        durationInSeconds: legacy.durationInSeconds,
-        lyricLines: legacy.lyricLines,
-      },
-    ];
-  }
-  return [];
-}
 
 const isBlank = (value: string | undefined): boolean =>
   !value || value.trim() === "";
@@ -78,35 +56,40 @@ async function resolveTrack(
   };
 }
 
-async function calculateMetadata(
-  props: PlayerCompositionProps,
-  abortSignal: AbortSignal | undefined,
-  options: { lyrics: boolean },
-) {
-  const input = inputTracks(props);
-  if (!input.length) {
+export const calculatePlayerMetadata: CalculateMetadataFunction<
+  PlayerCompositionProps
+> = async ({ props, abortSignal }) => {
+  const track = await resolveTrack(props, abortSignal, { lyrics: true });
+  const durationInFrames = trackDurationInFrames(
+    track.durationInSeconds as number,
+    track.audioOffsetInSeconds,
+    DEFAULT_FPS,
+    track.audioEndInSeconds,
+  );
+
+  return {
+    fps: DEFAULT_FPS,
+    durationInFrames: Math.max(1, durationInFrames),
+    props: track,
+  };
+};
+
+export const calculateAlbumMetadata: CalculateMetadataFunction<
+  AlbumCompositionProps
+> = async ({ props, abortSignal }) => {
+  if (!props.tracks.length) {
     throw new Error("至少需要一首歌曲");
   }
 
   const tracks = await Promise.all(
-    input.map((track) => resolveTrack(track, abortSignal, options)),
+    props.tracks.map((track) =>
+      resolveTrack(track, abortSignal, { lyrics: false }),
+    ),
   );
 
-  const durationInFrames = options.lyrics
-    ? tracks.reduce(
-        (sum, track) =>
-          sum +
-          trackDurationInFrames(
-            track.durationInSeconds as number,
-            track.audioOffsetInSeconds,
-            DEFAULT_FPS,
-            track.audioEndInSeconds,
-          ),
-        0,
-      )
-    : props.cueStills
-      ? tracks.length
-      : albumSpanInFrames(tracks, DEFAULT_FPS);
+  const durationInFrames = props.cueStills
+    ? tracks.length
+    : albumSpanInFrames(tracks, DEFAULT_FPS);
 
   return {
     fps: DEFAULT_FPS,
@@ -116,16 +99,4 @@ async function calculateMetadata(
       tracks,
     },
   };
-}
-
-export const calculatePlayerMetadata: CalculateMetadataFunction<
-  PlayerCompositionProps
-> = async ({ props, abortSignal }) => {
-  return calculateMetadata(props, abortSignal, { lyrics: true });
-};
-
-export const calculateAlbumMetadata: CalculateMetadataFunction<
-  PlayerCompositionProps
-> = async ({ props, abortSignal }) => {
-  return calculateMetadata(props, abortSignal, { lyrics: false });
 };

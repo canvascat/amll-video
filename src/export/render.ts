@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { AlbumCompositionProps } from "../helpers/schema";
 import { trackPlayableSeconds } from "../helpers/track-duration";
 import { applyProjectTmp, withProjectTmpEnv } from "../lib/project-tmp";
 import { ALBUM_COMPOSITION_ID, COMPOSITION_ID } from "../remotion/constants";
@@ -99,7 +100,7 @@ function remotionCommonArgs(options: {
 export async function previewStudio(args: ExportArgs): Promise<void> {
   const tmpDir = await applyProjectTmp();
   if (!args.config) {
-    console.log("正在启动 Remotion Studio 预览默认曲目列表");
+    console.log("正在启动 Remotion Studio 预览默认曲目");
     await runRemotion(["studio", remotionEntry()], tmpDir);
     return;
   }
@@ -127,6 +128,13 @@ export async function previewStudio(args: ExportArgs): Promise<void> {
   }
 }
 
+function albumInputProps(job: ExportJob): AlbumCompositionProps {
+  if (!("tracks" in job.inputProps)) {
+    throw new Error("专辑导出需要曲目列表");
+  }
+  return job.inputProps;
+}
+
 function trackLabel(job: ExportJob): string {
   return job.sourceAudios.length > 1
     ? `${job.title} 等 ${job.sourceAudios.length} 首`
@@ -141,14 +149,14 @@ async function renderAlbumCueVideo(options: {
   tmpDir: string;
 }): Promise<void> {
   const { job, args, workDir, silentVideoPath, tmpDir } = options;
-  const tracks = job.inputProps.tracks;
+  const tracks = albumInputProps(job).tracks;
   const cuesVideoPath = path.join(workDir, "cues.mp4");
   const stillsDir = path.join(workDir, "stills");
   const propsPath = path.join(workDir, "input-props.json");
   await mkdir(stillsDir, { recursive: true });
   await writeFile(
     propsPath,
-    JSON.stringify({ ...job.inputProps, cueStills: true }),
+    JSON.stringify({ ...albumInputProps(job), cueStills: true }),
   );
 
   console.log(
@@ -201,7 +209,7 @@ async function writeAlbumChapterSidecar(
   job: ExportJob,
   outputLocation: string,
 ): Promise<void> {
-  const chapters = albumChaptersFromTracks(job.inputProps.tracks);
+  const chapters = albumChaptersFromTracks(albumInputProps(job).tracks);
   const sidecarPath = path.join(
     path.dirname(outputLocation),
     `${path.basename(outputLocation, path.extname(outputLocation))}.chapters.txt`,

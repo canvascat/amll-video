@@ -2,12 +2,16 @@ import type { LyricLine } from "@applemusic-like-lyrics/core";
 import { copyFile, mkdir, mkdtemp, readFile } from "node:fs/promises";
 import path from "node:path";
 import { detectLyricFormat, parseLyricText } from "../helpers/lyrics";
-import type { PlayerCompositionProps, TrackProps } from "../helpers/schema";
+import type {
+  AlbumCompositionProps,
+  PlayerCompositionProps,
+  TrackProps,
+} from "../helpers/schema";
 import { trackDurationInFrames } from "../helpers/track-duration";
 import { ensureProjectTmpDir } from "../lib/project-tmp";
 import { loadPreparedConfig, type ConfigTrack } from "./load-config";
 import { collapseSharedSourceAudios, type ConcatAudioInput } from "./mux";
-import type { ExportArgs } from "./parse-args";
+import { UsageError, type ExportArgs } from "./parse-args";
 import { defaultOutputPath, losslessOutputPath } from "./timing";
 
 export type ExportJob = {
@@ -18,7 +22,7 @@ export type ExportJob = {
   durationInFrames: number;
   sourceAudios: ConcatAudioInput[];
   title: string;
-  inputProps: PlayerCompositionProps;
+  inputProps: PlayerCompositionProps | AlbumCompositionProps;
 };
 
 function jsonSafeTime(value: number): number {
@@ -158,12 +162,25 @@ function sourceAudiosForJob(items: MaterializedTrack[]): ConcatAudioInput[] {
   return collapseSharedSourceAudios(items.map((item) => item.sourceAudio));
 }
 
+function singleTrackProps(items: MaterializedTrack[]): PlayerCompositionProps {
+  const single = items[0];
+  if (!single || items.length !== 1) {
+    throw new UsageError("AMLLPlayer 只支持单曲");
+  }
+  return single.track;
+}
+
 export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {
   if (!args.config) {
     throw new Error("需要配置文件");
   }
 
   const loaded = await loadPreparedConfig(args.config);
+  if (!args.album && loaded.tracks.length !== 1) {
+    throw new UsageError(
+      `AMLLPlayer 只支持单曲，这份配置有 ${loaded.tracks.length} 首。整轨专辑请加上 --album`,
+    );
+  }
   const publicDir = await mkdtemp(
     path.join(await ensureProjectTmpDir(), "rmv-export-"),
   );
@@ -193,7 +210,9 @@ export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {
     durationInFrames: Math.max(1, durationInFrames),
     outputPath: losslessOutputPath(args.out ?? defaultOutputPath(loaded.title)),
     sourceAudios: sourceAudiosForJob(materialized),
-    inputProps: { tracks: materialized.map((item) => item.track) },
+    inputProps: args.album
+      ? { tracks: materialized.map((item) => item.track) }
+      : singleTrackProps(materialized),
   };
 }
 

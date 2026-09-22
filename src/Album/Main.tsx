@@ -6,14 +6,14 @@ import {
   useVideoConfig,
 } from "remotion";
 import { resolvePublicAsset } from "../helpers/public-asset";
-import type { PlayerCompositionProps } from "../helpers/schema";
+import type { AlbumCompositionProps } from "../helpers/schema";
 import { trackIndexAtAudioSeconds } from "../helpers/track-duration";
 import { Cover } from "../Player/Cover";
 import { playerFontFamily } from "../Player/font";
 import { MusicInfo } from "../Player/MusicInfo";
 import { BlurredCoverBackground } from "./BlurredCoverBackground";
 
-export const AlbumPlayer: React.FC<PlayerCompositionProps> = ({
+export const AlbumPlayer: React.FC<AlbumCompositionProps> = ({
   tracks = [],
   cueStills = false,
 }) => {
