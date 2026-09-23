@@ -80,16 +80,32 @@ export const calculatePlayerMetadata: CalculateMetadataFunction<
 
 export const calculateAlbumMetadata: CalculateMetadataFunction<
   AlbumCompositionProps
-> = async ({ props, abortSignal }) => {
+> = async ({ props }) => {
   if (!props.tracks.length) {
     throw new Error("至少需要一首歌曲");
   }
+  if (isBlank(props.audioFileUrl)) {
+    throw new Error("专辑缺少音频");
+  }
 
-  const tracks = await Promise.all(
-    props.tracks.map((track) =>
-      resolveTrack(track, abortSignal, { lyrics: false }),
-    ),
-  );
+  let tracks = props.tracks;
+  const missingEnd = tracks.some((track) => !hasPositiveDuration(track.audioEndInSeconds));
+  if (missingEnd) {
+    const input = new Input({
+      source: new UrlSource(props.audioFileUrl),
+      formats: ALL_FORMATS,
+    });
+    const durationInSeconds = await input.computeDuration();
+    if (!hasPositiveDuration(durationInSeconds)) {
+      throw new Error(`无法读取音频时长: ${props.audioFileUrl}`);
+    }
+    tracks = tracks.map((track) => ({
+      ...track,
+      audioEndInSeconds: hasPositiveDuration(track.audioEndInSeconds)
+        ? track.audioEndInSeconds
+        : durationInSeconds,
+    }));
+  }
 
   const durationInFrames = props.cueStills
     ? tracks.length

@@ -193,7 +193,7 @@ async function renderAlbumCueVideo(options: {
       durationSeconds: Math.max(
         0.001,
         trackPlayableSeconds(
-          track.durationInSeconds ?? 0,
+          track.audioEndInSeconds ?? 0,
           track.audioOffsetInSeconds,
           track.audioEndInSeconds,
         ),

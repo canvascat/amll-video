@@ -72,9 +72,11 @@ function readTrack(
     artistName?: string;
     albumName?: string;
   },
+  options?: { lyrics?: boolean },
 ): ConfigTrack {
   const audioFileUrl = asString(raw.audioFileUrl) || defaults?.audioFileUrl || "";
-  const lyricsFileUrl = asString(raw.lyricsFileUrl);
+  const includeLyrics = options?.lyrics !== false;
+  const lyricsFileUrl = includeLyrics ? asString(raw.lyricsFileUrl) : "";
   const coverImageUrl =
     asString(raw.coverImageUrl) || defaults?.coverImageUrl || "";
   const offset = asFiniteNumber(raw.audioOffsetInSeconds) ?? 0;
@@ -102,7 +104,11 @@ function readTrack(
   };
 }
 
-function parseConfigData(data: unknown, configDir: string): LoadedConfig {
+function parseConfigData(
+  data: unknown,
+  configDir: string,
+  options?: { lyrics?: boolean },
+): LoadedConfig {
   if (!isRecord(data)) {
     throw new UsageError("配置文件必须是 JSON 对象");
   }
@@ -124,7 +130,7 @@ function parseConfigData(data: unknown, configDir: string): LoadedConfig {
       if (!isRecord(item)) {
         throw new UsageError(`tracks[${index}] 不是对象`);
       }
-      return readTrack(item, configDir, defaults);
+      return readTrack(item, configDir, defaults, options);
     });
     const title =
       asString(data.albumName) ||
@@ -147,7 +153,10 @@ function parseConfigData(data: unknown, configDir: string): LoadedConfig {
   );
 }
 
-export async function loadPreparedConfig(configPath: string): Promise<LoadedConfig> {
+export async function loadPreparedConfig(
+  configPath: string,
+  options?: { lyrics?: boolean },
+): Promise<LoadedConfig> {
   const resolved = path.resolve(configPath);
   if (!existsSync(resolved)) {
     throw new UsageError(`找不到配置文件: ${resolved}`);
@@ -161,5 +170,5 @@ export async function loadPreparedConfig(configPath: string): Promise<LoadedConf
     throw new UsageError(`配置文件不是合法 JSON: ${resolved}\n${message}`);
   }
 
-  return parseConfigData(data, path.dirname(resolved));
+  return parseConfigData(data, path.dirname(resolved), options);
 }

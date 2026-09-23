@@ -17,8 +17,18 @@ export const trackSchema = z.object({
 
 export const playerCompositionSchema = trackSchema;
 
+export const albumTrackSchema = z.object({
+  songName: z.string().optional(),
+  audioOffsetInSeconds: z.number().min(0),
+  audioEndInSeconds: z.number().positive().optional(),
+});
+
 export const albumCompositionSchema = z.object({
-  tracks: z.array(trackSchema).min(1),
+  audioFileUrl: z.string(),
+  coverImageUrl: z.string().optional(),
+  artistName: z.string().optional(),
+  albumName: z.string().optional(),
+  tracks: z.array(albumTrackSchema).min(1),
   cueStills: z.boolean().optional(),
 });
 
@@ -28,7 +38,13 @@ export type TrackProps = Omit<z.infer<typeof trackSchema>, "lyricLines"> & {
 
 export type PlayerCompositionProps = TrackProps;
 
+export type AlbumTrackProps = z.infer<typeof albumTrackSchema>;
+
 export type AlbumCompositionProps = {
-  tracks: TrackProps[];
+  audioFileUrl: string;
+  coverImageUrl?: string;
+  artistName?: string;
+  albumName?: string;
+  tracks: AlbumTrackProps[];
   cueStills?: boolean;
 };

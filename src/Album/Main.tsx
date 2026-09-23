@@ -16,21 +16,24 @@ import { BlurredCoverBackground } from "./BlurredCoverBackground";
 export const AlbumPlayer: React.FC<AlbumCompositionProps> = ({
   tracks = [],
   cueStills = false,
+  audioFileUrl,
+  coverImageUrl,
+  artistName = "",
+  albumName = "",
 }) => {
   const { fps } = useVideoConfig();
   const { isRendering } = getRemotionEnvironment();
   const frame = useCurrentFrame();
-  const album = tracks[0];
-  const audioOffsetInSeconds = album?.audioOffsetInSeconds ?? 0;
+  const audioOffsetInSeconds = tracks[0]?.audioOffsetInSeconds ?? 0;
   const cueIndex = cueStills
     ? Math.min(Math.max(frame, 0), Math.max(tracks.length - 1, 0))
     : trackIndexAtAudioSeconds(
         tracks,
         audioOffsetInSeconds + frame / fps,
       );
-  const current = tracks[cueIndex] ?? album;
-  const coverSrc = resolvePublicAsset(album?.coverImageUrl);
-  const audioSrc = resolvePublicAsset(album?.audioFileUrl);
+  const current = tracks[cueIndex];
+  const coverSrc = resolvePublicAsset(coverImageUrl);
+  const audioSrc = resolvePublicAsset(audioFileUrl);
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#111", fontWeight: "bold" }}>
@@ -76,8 +79,8 @@ export const AlbumPlayer: React.FC<AlbumCompositionProps> = ({
             textAlign: "center",
           }}
           songName={current?.songName ?? ""}
-          artistName={album?.artistName ?? ""}
-          albumName={album?.albumName ?? ""}
+          artistName={artistName}
+          albumName={albumName}
         />
       </div>
       {audioSrc && !isRendering && !cueStills ? (

@@ -4,6 +4,7 @@ import path from "node:path";
 import type {
   LookupResult,
   PreparedAlbum,
+  PreparedAlbumTrack,
   PreparedTrack,
   ResolvedCover,
 } from "./types";
@@ -27,15 +28,6 @@ export function fileStem(filePath: string): string {
   const base = path.basename(filePath);
   const ext = path.extname(base);
   return ext ? base.slice(0, -ext.length) : base;
-}
-
-export function safeFileStem(name: string): string {
-  const cleaned = name
-    .replace(/[\\/:*?"<>|]/g, "_")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/^\.+$/, "");
-  return cleaned || "track";
 }
 
 function roundTime(value: number): number {
@@ -113,22 +105,6 @@ async function placeCover(
   return name;
 }
 
-function allocateLyricName(
-  used: Set<string>,
-  title: string,
-  format: string,
-): string {
-  const stem = safeFileStem(title);
-  let name = `${stem}.${format}`;
-  let n = 2;
-  while (used.has(name.toLowerCase())) {
-    name = `${stem}-${n}.${format}`;
-    n += 1;
-  }
-  used.add(name.toLowerCase());
-  return name;
-}
-
 export async function writeMaterials(options: {
   audioPath: string;
   result: LookupResult;
@@ -174,16 +150,11 @@ export async function writeAlbumMaterials(options: {
   albumName: string;
   artistName: string;
   cover?: ResolvedCover;
-  tracks: Array<{
-    result: LookupResult;
-    startSeconds: number;
-    endSeconds: number;
-  }>;
+  tracks: PreparedAlbumTrack[];
   outDir?: string;
 }): Promise<{
   jsonPath: string;
   prepared: PreparedAlbum;
-  missingLyrics: number;
 }> {
   const { audioPath, cover } = options;
   const outDir = options.outDir ?? path.dirname(audioPath);
@@ -192,33 +163,11 @@ export async function writeAlbumMaterials(options: {
 
   const audioFileUrl = await ensureAudioBeside(audioPath, outDir);
   const coverImageUrl = await placeCover(outDir, stem, cover);
-
-  const usedLyricNames = new Set<string>();
-  const tracks: PreparedTrack[] = [];
-  let missingLyrics = 0;
-  for (const item of options.tracks) {
-    let lyricsFileUrl = "";
-    if (item.result.lyric) {
-      lyricsFileUrl = allocateLyricName(
-        usedLyricNames,
-        item.result.songName,
-        item.result.lyric.format,
-      );
-      await writeFile(
-        path.join(outDir, lyricsFileUrl),
-        item.result.lyric.content,
-        "utf8",
-      );
-    } else {
-      missingLyrics += 1;
-    }
-    tracks.push(
-      toPreparedTrack(audioFileUrl, lyricsFileUrl, coverImageUrl, item.result, {
-        startSeconds: item.startSeconds,
-        endSeconds: item.endSeconds,
-      }),
-    );
-  }
+  const tracks = options.tracks.map((track) => ({
+    songName: track.songName,
+    audioOffsetInSeconds: roundTime(track.audioOffsetInSeconds),
+    audioEndInSeconds: roundTime(track.audioEndInSeconds),
+  }));
 
   const prepared: PreparedAlbum = {
     albumName: options.albumName,
@@ -230,5 +179,5 @@ export async function writeAlbumMaterials(options: {
   const jsonPath = path.join(outDir, `${stem}.json`);
   await writeFile(jsonPath, `${JSON.stringify(prepared, null, 2)}\n`, "utf8");
 
-  return { jsonPath, prepared, missingLyrics };
+  return { jsonPath, prepared };
 }

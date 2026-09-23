@@ -18,5 +18,15 @@ const defaultTrack: PlayerCompositionProps = {
 export const defaultPlayerProps: PlayerCompositionProps = defaultTrack;
 
 export const defaultAlbumProps: AlbumCompositionProps = {
-  tracks: [defaultTrack],
+  audioFileUrl: defaultTrack.audioFileUrl,
+  coverImageUrl: defaultTrack.coverImageUrl,
+  artistName: defaultTrack.artistName,
+  albumName: defaultTrack.albumName,
+  tracks: [
+    {
+      songName: defaultTrack.songName,
+      audioOffsetInSeconds: defaultTrack.audioOffsetInSeconds,
+      audioEndInSeconds: prepared.durationInSeconds,
+    },
+  ],
 };

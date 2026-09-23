@@ -60,14 +60,14 @@ nub src/export/cli.ts --config <配置.json>
 | `--frames` | 只渲染部分帧，例如 `0-2`（调试） |
 | `--concurrency` | 并行渲染路数，数字或 `50%`；默认 1 路。开太高歌词会闪 |
 | `--preview` | 打开 Studio，不导出 |
-| `--album` | 用 `AlbumPlayer`：毛玻璃封面、整轨一条音频、按时间切歌名 |
+| `--album` | 用 `AlbumPlayer`：毛玻璃封面、整轨一条音频、按时间切歌名。直接传入 `.cue` 时自动开启，不需要歌词 |
 | `-h` | 打印帮助 |
 
 ## 运行流程
 
 ```text
-配置 json（单曲或专辑）
-    → 相对配置目录解析音频 / 歌词 / 封面
+配置 json，或整轨 .cue
+    → json 相对配置目录解析音频 / 歌词 / 封面；.cue 直接解析曲目时间，封面和音频各一份
     → 拷到临时 public 目录，生成 Composition props
     → Remotion 渲染无声 H.264（--muted，--gl=angle，默认 1 路并行）
     → ffmpeg -c:v copy -c:a copy -shortest
