@@ -1,3 +1,4 @@
+import path from "node:path";
 import { parseArgs } from "node:util";
 import { DEFAULT_FPS } from "../remotion/constants";
 
@@ -23,8 +24,10 @@ export type ExportArgs = {
 
 export const USAGE = `用法: nub run export -- <配置.json> [选项]
 
-读取备料生成的 json，相对配置文件所在目录解析音频 / 歌词 / 封面。
-不带 --album 时只接受单曲；多首整轨请加 --album。
+读取备料生成的 json，或直接读取整轨 .cue。
+json 相对配置文件所在目录解析音频 / 歌词 / 封面。
+.cue 自动走专辑模式：同一音频、同一封面，曲目只有起止时间，不需要歌词。
+不带 --album 时，json 只接受单曲；多首整轨请加 --album，或直接传入 .cue。
 
 必填:
   --config  配置文件路径（也可直接作为位置参数）
@@ -35,7 +38,7 @@ export const USAGE = `用法: nub run export -- <配置.json> [选项]
   --frames       只渲染部分帧，例如 0-2（调试用）
   --concurrency  并行渲染路数，数字或 50%；默认 1 路
   --preview      打开 Remotion Studio 预览，而不是直接导出
-  --album        用 AlbumPlayer：毛玻璃封面、整轨一条音频、按时间切歌名，不渲染歌词
+  --album        用 AlbumPlayer：毛玻璃封面、整轨一条音频、按时间切歌名。传入 .cue 时自动开启
   -h, --help
 
 不传配置并加上 --preview 时，打开 Studio 预览默认曲目。
@@ -104,7 +107,7 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     frames: values.frames,
     concurrency: parseConcurrency(values.concurrency),
     preview: Boolean(values.preview),
-    album: Boolean(values.album),
+    album: Boolean(values.album) || (config ? path.extname(config).toLowerCase() === ".cue" : false),
   };
 }
 

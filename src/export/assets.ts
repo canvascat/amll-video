@@ -1,14 +1,18 @@
 import type { LyricLine } from "@applemusic-like-lyrics/core";
-import { copyFile, mkdir, mkdtemp, readFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { detectLyricFormat, parseLyricText } from "../helpers/lyrics";
 import type {
   AlbumCompositionProps,
+  AlbumTrackProps,
   PlayerCompositionProps,
   TrackProps,
 } from "../helpers/schema";
-import { trackDurationInFrames } from "../helpers/track-duration";
+import { albumSpanInFrames, trackDurationInFrames } from "../helpers/track-duration";
 import { ensureProjectTmpDir } from "../lib/project-tmp";
+import { loadCueAlbum } from "../prepare/album";
+import { isCuePath } from "../prepare/cue";
+import { coverExtension } from "../prepare/write-materials";
 import { loadPreparedConfig, type ConfigTrack } from "./load-config";
 import { collapseSharedSourceAudios, type ConcatAudioInput } from "./mux";
 import { UsageError, type ExportArgs } from "./parse-args";
@@ -96,13 +100,13 @@ async function materializeTrack(options: {
   publicDir: string;
   fps: number;
   cache: AssetCache;
+  lyrics?: boolean;
 }): Promise<MaterializedTrack> {
   const { index, track, publicDir, fps, cache } = options;
   const endSec = playableEnd(track);
-  const lyricRaw = track.lyricPath
-    ? await readFile(track.lyricPath, "utf8")
-    : "";
-  const lyricLines = track.lyricPath
+  const includeLyrics = options.lyrics !== false && Boolean(track.lyricPath);
+  const lyricRaw = includeLyrics ? await readFile(track.lyricPath, "utf8") : "";
+  const lyricLines = includeLyrics
     ? parseLyricText(lyricRaw, detectLyricFormat(track.lyricPath))
     : [];
 
@@ -115,7 +119,7 @@ async function materializeTrack(options: {
   );
 
   let lyricFileName = "";
-  if (track.lyricPath) {
+  if (includeLyrics) {
     lyricFileName = `${prefix}-lyric${path.extname(track.lyricPath) || ".txt"}`;
     await copyFile(track.lyricPath, path.join(publicDir, lyricFileName));
   }
@@ -162,6 +166,28 @@ function sourceAudiosForJob(items: MaterializedTrack[]): ConcatAudioInput[] {
   return collapseSharedSourceAudios(items.map((item) => item.sourceAudio));
 }
 
+function albumTracksFrom(items: MaterializedTrack[]): AlbumTrackProps[] {
+  return items.map((item) => ({
+    songName: item.track.songName,
+    audioOffsetInSeconds: item.track.audioOffsetInSeconds,
+    audioEndInSeconds: item.track.audioEndInSeconds ?? item.track.durationInSeconds,
+  }));
+}
+
+function albumPropsFrom(items: MaterializedTrack[]): AlbumCompositionProps {
+  const shared = items[0]?.track;
+  if (!shared) {
+    throw new UsageError("专辑至少需要一首歌");
+  }
+  return {
+    audioFileUrl: shared.audioFileUrl,
+    coverImageUrl: shared.coverImageUrl || undefined,
+    artistName: shared.artistName,
+    albumName: shared.albumName,
+    tracks: albumTracksFrom(items),
+  };
+}
+
 function singleTrackProps(items: MaterializedTrack[]): PlayerCompositionProps {
   const single = items[0];
   if (!single || items.length !== 1) {
@@ -170,15 +196,77 @@ function singleTrackProps(items: MaterializedTrack[]): PlayerCompositionProps {
   return single.track;
 }
 
+async function prepareCueExportJob(args: ExportArgs): Promise<ExportJob> {
+  if (!args.config) {
+    throw new Error("需要 CUE 文件");
+  }
+
+  const album = await loadCueAlbum({ cuePath: path.resolve(args.config) });
+  const publicDir = await mkdtemp(
+    path.join(await ensureProjectTmpDir(), "rmv-export-"),
+  );
+  const cache = createAssetCache();
+  const audioFileName = await copyOnce(
+    cache.audio,
+    album.audioPath,
+    publicDir,
+    `audio-0${path.extname(album.audioPath) || ".bin"}`,
+  );
+
+  let coverFileName = "";
+  if (album.coverPath) {
+    coverFileName = await copyOnce(
+      cache.cover,
+      album.coverPath,
+      publicDir,
+      `cover-0${path.extname(album.coverPath) || ".jpg"}`,
+    );
+  } else if (album.cover) {
+    coverFileName = `cover-0${coverExtension(album.cover.mimeType)}`;
+    await writeFile(path.join(publicDir, coverFileName), album.cover.data);
+  }
+
+  const first = album.tracks[0];
+  const last = album.tracks[album.tracks.length - 1];
+  const title = album.albumName || first?.songName || "untitled";
+  const inputProps: AlbumCompositionProps = {
+    audioFileUrl: audioFileName,
+    coverImageUrl: coverFileName || undefined,
+    artistName: album.artistName,
+    albumName: album.albumName,
+    tracks: album.tracks,
+  };
+
+  return {
+    publicDir,
+    ownsPublicDir: true,
+    title,
+    fps: args.fps,
+    durationInFrames: Math.max(1, albumSpanInFrames(album.tracks, args.fps)),
+    outputPath: losslessOutputPath(args.out ?? defaultOutputPath(title)),
+    sourceAudios: [
+      {
+        path: album.audioPath,
+        offsetInSeconds: first?.audioOffsetInSeconds ?? 0,
+        durationInSeconds: last?.audioEndInSeconds ?? 0,
+      },
+    ],
+    inputProps,
+  };
+}
+
 export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {
   if (!args.config) {
     throw new Error("需要配置文件");
   }
+  if (isCuePath(args.config)) {
+    return prepareCueExportJob(args);
+  }
 
-  const loaded = await loadPreparedConfig(args.config);
+  const loaded = await loadPreparedConfig(args.config, { lyrics: !args.album });
   if (!args.album && loaded.tracks.length !== 1) {
     throw new UsageError(
-      `AMLLPlayer 只支持单曲，这份配置有 ${loaded.tracks.length} 首。整轨专辑请加上 --album`,
+      `AMLLPlayer 只支持单曲，这份配置有 ${loaded.tracks.length} 首。整轨专辑请加上 --album，或直接传入 .cue`,
     );
   }
   const publicDir = await mkdtemp(
@@ -194,13 +282,14 @@ export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {
         publicDir,
         fps: args.fps,
         cache,
+        lyrics: !args.album,
       }),
     );
   }
-  const durationInFrames = materialized.reduce(
-    (sum, item) => sum + item.durationInFrames,
-    0,
-  );
+  const albumTracks = args.album ? albumTracksFrom(materialized) : [];
+  const durationInFrames = args.album
+    ? albumSpanInFrames(albumTracks, args.fps)
+    : materialized.reduce((sum, item) => sum + item.durationInFrames, 0);
 
   return {
     publicDir,
@@ -210,9 +299,7 @@ export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {
     durationInFrames: Math.max(1, durationInFrames),
     outputPath: losslessOutputPath(args.out ?? defaultOutputPath(loaded.title)),
     sourceAudios: sourceAudiosForJob(materialized),
-    inputProps: args.album
-      ? { tracks: materialized.map((item) => item.track) }
-      : singleTrackProps(materialized),
+    inputProps: args.album ? albumPropsFrom(materialized) : singleTrackProps(materialized),
   };
 }
 

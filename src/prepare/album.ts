@@ -7,9 +7,8 @@ import {
   resolveCueCoverPath,
   type CueSheet,
 } from "./cue";
-import { lookupTrack } from "./lookup";
 import { readLocalTags } from "./tags";
-import type { LookupResult, ResolvedCover } from "./types";
+import type { ResolvedCover } from "./types";
 import { writeAlbumMaterials } from "./write-materials";
 
 function mimeFromCoverPath(coverPath: string): string {
@@ -58,16 +57,28 @@ async function audioDuration(audioPath: string): Promise<number> {
   return duration;
 }
 
-export async function prepareCueAlbum(options: {
+function roundTime(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+export type CueAlbum = {
+  albumName: string;
+  artistName: string;
+  audioPath: string;
+  coverPath?: string;
+  cover?: ResolvedCover;
+  tracks: Array<{
+    songName: string;
+    audioOffsetInSeconds: number;
+    audioEndInSeconds: number;
+  }>;
+};
+
+export async function loadCueAlbum(options: {
   cuePath: string;
-  outDir?: string;
   album?: string;
   artist?: string;
-}): Promise<{
-  jsonPath: string;
-  missingLyrics: number;
-  trackCount: number;
-}> {
+}): Promise<CueAlbum> {
   const sheet = await parseCueSheet(options.cuePath);
   const audioPath = resolveCueAudioPath(sheet, sheet.tracks[0]?.file ?? "");
   const mixedFiles = sheet.tracks.some((track) => track.file !== sheet.tracks[0]?.file);
@@ -80,46 +91,51 @@ export async function prepareCueAlbum(options: {
     loadAlbumCover(sheet, audioPath),
   ]);
 
-  const albumName = options.album?.trim() || sheet.albumTitle;
-  const artistName = options.artist?.trim() || sheet.albumPerformer;
-  const lookedUp: Array<{
-    result: LookupResult;
-    startSeconds: number;
-    endSeconds: number;
-  }> = [];
+  return {
+    albumName: options.album?.trim() || sheet.albumTitle,
+    artistName: options.artist?.trim() || sheet.albumPerformer,
+    audioPath,
+    coverPath: resolveCueCoverPath(sheet),
+    cover,
+    tracks: sheet.tracks.map((track, index) => {
+      const startSeconds = track.startSeconds;
+      const endSeconds = sheet.tracks[index + 1]?.startSeconds ?? fileDuration;
+      return {
+        songName: track.title,
+        audioOffsetInSeconds: roundTime(startSeconds),
+        audioEndInSeconds: roundTime(endSeconds),
+      };
+    }),
+  };
+}
 
-  for (const [index, track] of sheet.tracks.entries()) {
-    const startSeconds = track.startSeconds;
-    const endSeconds = sheet.tracks[index + 1]?.startSeconds ?? fileDuration;
-    const length = Math.max(0.001, endSeconds - startSeconds);
+export async function prepareCueAlbum(options: {
+  cuePath: string;
+  outDir?: string;
+  album?: string;
+  artist?: string;
+}): Promise<{
+  jsonPath: string;
+  trackCount: number;
+}> {
+  const album = await loadCueAlbum(options);
+  for (const [index, track] of album.tracks.entries()) {
     console.log(
-      `[${index + 1}/${sheet.tracks.length}] ${track.title}  ${startSeconds.toFixed(3)}–${endSeconds.toFixed(3)}s`,
+      `[${index + 1}/${album.tracks.length}] ${track.songName}  ${track.audioOffsetInSeconds.toFixed(3)}–${track.audioEndInSeconds.toFixed(3)}s`,
     );
-    const result = await lookupTrack({
-      audioPath,
-      title: track.title,
-      artist: track.performer || artistName,
-      album: albumName,
-      durationInSeconds: length,
-      audioStartSeconds: startSeconds,
-      cover,
-      ignoreEmbeddedLyric: true,
-    });
-    lookedUp.push({ result, startSeconds, endSeconds });
   }
 
   const written = await writeAlbumMaterials({
-    audioPath,
+    audioPath: album.audioPath,
     outDir: options.outDir,
-    albumName,
-    artistName,
-    cover: lookedUp[0]?.result.cover ?? cover,
-    tracks: lookedUp,
+    albumName: album.albumName,
+    artistName: album.artistName,
+    cover: album.cover,
+    tracks: album.tracks,
   });
 
   return {
     jsonPath: written.jsonPath,
-    missingLyrics: written.missingLyrics,
     trackCount: written.prepared.tracks.length,
   };
 }

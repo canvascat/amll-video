@@ -18,15 +18,16 @@ class UsageError extends Error {
 
 const USAGE = `用法: nub run prepare -- --audio <音频或CUE> [--out <目录>] [选项]
 
-根据音频标签或 CUE 曲目表联网匹配歌词、封面和歌名/歌手/专辑。
+根据音频标签联网匹配歌词、封面和歌名/歌手/专辑。
+整轨 CUE 只解析曲目时间，不匹配歌词；封面和音频整张专辑共用。
 
 默认写在音频 / CUE 同目录，配置与音频同名。
 
 单曲写出:
   <歌曲>.json  <歌曲>.<歌词格式>  <歌曲>.<图>
 
-整轨 CUE 写出（同一音频 + 每首歌的开始/结束时间）:
-  <专辑音频>.json  <歌名>.<歌词格式> …
+整轨 CUE 写出（同一音频、同一封面，曲目只有起止时间）:
+  <专辑音频>.json
 
 必填:
   --audio   音频或 .cue 路径
@@ -110,18 +111,13 @@ async function main() {
     const outDir = path.resolve(args.out ?? path.dirname(inputPath));
 
     if (isCuePath(inputPath)) {
-      const { jsonPath, missingLyrics, trackCount } = await prepareCueAlbum({
+      const { jsonPath, trackCount } = await prepareCueAlbum({
         cuePath: inputPath,
         outDir,
         album: args.album,
         artist: args.artist,
       });
-      console.log(`已写出 ${jsonPath}（${trackCount} 首，共用同一音频）`);
-      if (missingLyrics > 0) {
-        throw new UsageError(
-          `${missingLyrics} 首未匹配到歌词，已写出配置，可按歌名补歌词后再生成视频`,
-        );
-      }
+      console.log(`已写出 ${jsonPath}（${trackCount} 首，共用同一音频和封面）`);
       return;
     }
 

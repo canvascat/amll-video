@@ -2,7 +2,7 @@
 
 给生成视频准备材料：读本地音频标签，缺歌词 / 封面 / 歌名歌手专辑时再联网匹配，默认写在音频同目录。
 
-整轨 CD（`.cue` + 一张 flac）不切片：所有曲目指向同一音频文件，用 `audioOffsetInSeconds` / `audioEndInSeconds` 标注开始和结束。
+整轨 CD（`.cue` + 一张 flac）不切片、不匹配歌词。封面和音频整张专辑共用，曲目只保留歌名和起止时间。导出也可以直接读 `.cue`，不必先备料。
 
 本模块只跑在 Node（CLI / 库函数），不进 Remotion 浏览器包。
 
@@ -75,15 +75,12 @@ json 字段对齐 [`TrackProps`](../helpers/schema.ts)，另带 `match` 说明�
 nub run prepare -- --audio "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.cue"
 ```
 
-不切片、不复制整轨。json 与音频同名；每首歌的歌词文件用歌名。曲目列表里每首歌指向同一音频，并标开始 / 结束时间（CUE `INDEX 01`，单位秒；最后一首的结束为整轨时长）：
+不切片、不复制整轨、不下载歌词。json 与音频同名。曲目只有歌名和起止时间（CUE `INDEX 01`，单位秒；最后一首的结束为整轨时长）：
 
 ```text
 王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.flac
 王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.jpg
 王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.json
-不得了.yrc
-我愿意.ttml
-…
 ```
 
 ```json
@@ -94,29 +91,20 @@ nub run prepare -- --audio "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新�
   "coverImageUrl": "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.jpg",
   "tracks": [
     {
-      "audioFileUrl": "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.flac",
-      "lyricsFileUrl": "不得了.yrc",
-      "coverImageUrl": "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.jpg",
-      "audioOffsetInSeconds": 0,
-      "audioEndInSeconds": 228.4267,
-      "durationInSeconds": 228.4267,
       "songName": "不得了",
-      "artistName": "王菲",
-      "albumName": "菲卖品 王菲精选"
+      "audioOffsetInSeconds": 0,
+      "audioEndInSeconds": 228.427
     },
     {
-      "audioFileUrl": "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.flac",
-      "lyricsFileUrl": "我愿意.ttml",
-      "audioOffsetInSeconds": 228.4267,
-      "audioEndInSeconds": 502.52,
-      "durationInSeconds": 502.52,
-      "songName": "我愿意"
+      "songName": "我愿意",
+      "audioOffsetInSeconds": 228.427,
+      "audioEndInSeconds": 502.52
     }
   ]
 }
 ```
 
-播放长度是 `audioEndInSeconds - audioOffsetInSeconds`（没有 end 时退回 `durationInSeconds - offset`，与原先单曲行为一致）。CUE 里的 TITLE / PERFORMER 当作锁定的歌名歌手；专辑名来自 CUE 专辑 TITLE，没有则从 `艺人.-.日期.-.专辑.-.厂牌` 这种文件名解析。同名 `.jpg` 封面优先于音频内嵌图。
+播放长度是 `audioEndInSeconds - audioOffsetInSeconds`。歌名来自 CUE 曲目 TITLE；专辑名和歌手来自 CUE 专辑 TITLE / PERFORMER，没有则从 `艺人.-.日期.-.专辑.-.厂牌` 这种文件名解析。同名 `.jpg` 封面优先于音频内嵌图。预览和导出也可以跳过这份 json，直接把 `.cue` 传给 `export`。
 
 ## 本地优先
 
@@ -126,7 +114,7 @@ nub run prepare -- --audio "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新�
 | --- | --- |
 | 歌名 / 歌手 / 专辑 | 标签或 CLI 覆盖有则锁定；否则用最佳候选或 iTunes 补。无歌名时用文件名搜索 |
 | 封面 | 同名图已有则引用；否则写出内嵌图，不再下载 |
-| 时长 | 单曲用音频文件时长；CUE 曲目用 INDEX 起止，匹配时用该曲长度 |
+| 时长 | 单曲用音频文件时长；CUE 曲目用 INDEX 起止，最后一首结束于整轨时长 |
 | 歌词 | 标签里已有 **TTML** 才跳过搜索；内嵌 LRC/YRC 仍会联网，时长接近时 **TTML > YRC/QRC > LRC**。无时间戳的纯文本不用 |
 
 身份、封面齐全且歌词已是 TTML 时，不再为这三项发网络请求。
@@ -178,7 +166,7 @@ const { jsonPath, hasLyrics } = await writeMaterials({
 | 文件 | 职责 |
 | --- | --- |
 | `cli.ts` | 参数解析与退出码 |
-| `album.ts` | 整轨 CUE 备料编排 |
+| `album.ts` | 整轨 CUE 解析（时间区间、共用封面和音频）与备料 |
 | `cue.ts` | 解析 CUE、定位音频和封面 |
 | `lookup.ts` | 本地 + 多源编排、合并 |
 | `write-materials.ts` | 写出与音频同名的 json / 歌词 / 封面 |

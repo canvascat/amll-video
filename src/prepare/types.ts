@@ -101,10 +101,16 @@ export type PreparedTrack = {
   };
 };
 
+export type PreparedAlbumTrack = {
+  songName: string;
+  audioOffsetInSeconds: number;
+  audioEndInSeconds: number;
+};
+
 export type PreparedAlbum = {
   albumName: string;
   artistName: string;
   audioFileUrl: string;
   coverImageUrl: string;
-  tracks: PreparedTrack[];
+  tracks: PreparedAlbumTrack[];
 };

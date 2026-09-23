@@ -29,6 +29,12 @@ test("--album 走专辑播放器", () => {
   assert.equal(args.album, true);
 });
 
+test("传入 .cue 时自动走专辑模式", () => {
+  const args = parseExportArgs(["菲卖品.cue"]);
+  assert.equal(args.album, true);
+  assert.equal(args.config, "菲卖品.cue");
+});
+
 test("无效并行路数会报错", () => {
   assert.throws(
     () => parseExportArgs(["album.json", "--concurrency", "0"]),
