@@ -80,7 +80,8 @@ export type LookupResult = {
   albumName: string;
   lyric?: ResolvedLyric;
   cover?: ResolvedCover;
-  lyricOffsetMs?: number;
+  /** 估算值，默认不写入配置。核对后由 --lyric-offset 确认。 */
+  suspectedLyricOffsetMs?: number;
 };
 
 export type PreparedTrack = {

@@ -10,6 +10,7 @@ import type {
 } from "./types";
 
 const COVER_EXTS = [".jpg", ".jpeg", ".png", ".webp", ".gif"] as const;
+const DIR_COVER_NAMES = ["cover", "folder", "front", "Cover", "Folder", "Front"] as const;
 
 export function coverExtension(mimeType: string | undefined): string {
   if (mimeType?.includes("png")) {
@@ -43,6 +44,7 @@ function toPreparedTrack(
   lyricsFileUrl: string,
   coverImageUrl: string,
   result: LookupResult,
+  lyricOffsetMs: number | undefined,
   timing?: { startSeconds: number; endSeconds: number },
 ): PreparedTrack {
   return {
@@ -57,7 +59,7 @@ function toPreparedTrack(
     durationInSeconds: timing
       ? roundTime(timing.endSeconds)
       : result.durationInSeconds,
-    lyricOffsetMs: result.lyricOffsetMs,
+    lyricOffsetMs,
     match: {
       lyricSource: result.lyric?.source,
       lyricFormat: result.lyric?.format,
@@ -85,6 +87,14 @@ function existingCoverName(dir: string, stem: string): string | undefined {
       return name;
     }
   }
+  for (const name of DIR_COVER_NAMES) {
+    for (const ext of COVER_EXTS) {
+      const file = `${name}${ext}`;
+      if (existsSync(path.join(dir, file))) {
+        return file;
+      }
+    }
+  }
   return undefined;
 }
 
@@ -109,6 +119,8 @@ export async function writeMaterials(options: {
   audioPath: string;
   result: LookupResult;
   outDir?: string;
+  /** 人工确认后的偏移，只对这次写出的歌词生效。 */
+  lyricOffsetMs?: number;
 }): Promise<{
   jsonPath: string;
   prepared: PreparedTrack;
@@ -134,6 +146,7 @@ export async function writeMaterials(options: {
     lyricsFileUrl,
     coverImageUrl,
     result,
+    options.lyricOffsetMs,
   );
   const jsonPath = path.join(outDir, `${stem}.json`);
   await writeFile(jsonPath, `${JSON.stringify(prepared, null, 2)}\n`, "utf8");

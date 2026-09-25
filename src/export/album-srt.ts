@@ -82,10 +82,10 @@ export async function writeAlbumSrt(options: {
       continue;
     }
     console.log(`  ${result.lyric.source} ${result.lyric.format}`);
-    if (result.lyricOffsetMs) {
+    if (result.suspectedLyricOffsetMs) {
       suspected.push({
         songName: track.songName,
-        offsetMs: result.lyricOffsetMs,
+        offsetMs: result.suspectedLyricOffsetMs,
         source: result.lyric.source,
         format: result.lyric.format,
       });
