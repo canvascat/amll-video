@@ -23,6 +23,16 @@ type SearchResponse = {
   };
 };
 
+type MusicuSearchResponse = {
+  req?: {
+    data?: {
+      body?: {
+        song?: { list?: SearchSong[] };
+      };
+    };
+  };
+};
+
 type LyricResponse = {
   lyric?: string;
   trans?: string;
@@ -67,6 +77,53 @@ function toCandidate(song: SearchSong): LyricCandidate | null {
   };
 }
 
+async function searchSongs(
+  keyword: string,
+  signal: AbortSignal,
+): Promise<SearchSong[]> {
+  const musicu = await fetchJson<MusicuSearchResponse>(
+    "https://u.y.qq.com/cgi-bin/musicu.fcg",
+    {
+      signal,
+      headers: { ...QQ_HEADERS, "Content-Type": "application/json" },
+      method: "POST",
+      body: JSON.stringify({
+        comm: { ct: "19", cv: "1859", uin: "0" },
+        req: {
+          method: "DoSearchForQQMusicDesktop",
+          module: "music.search.SearchCgiService",
+          param: {
+            query: keyword,
+            num_per_page: 20,
+            page_num: 1,
+            search_type: 0,
+          },
+        },
+      }),
+    },
+  );
+  const fromMusicu = musicu.req?.data?.body?.song?.list ?? [];
+  if (fromMusicu.length > 0) {
+    return fromMusicu;
+  }
+
+  const params = new URLSearchParams({
+    format: "json",
+    new_json: "1",
+    t: "0",
+    aggr: "1",
+    cr: "1",
+    p: "1",
+    n: "20",
+    w: keyword,
+  });
+  const body = await fetchJson<SearchResponse>(
+    `https://c.y.qq.com/soso/fcgi-bin/client_search_cp?${params.toString()}`,
+    { signal, headers: QQ_HEADERS },
+  );
+  return body.data?.song?.list ?? [];
+}
+
 export async function lookupQqMusic(
   query: TrackQuery,
   keyword: string,
@@ -74,21 +131,8 @@ export async function lookupQqMusic(
 ): Promise<ProviderLyric | null> {
   const signal = providerSignal(parentSignal);
   try {
-    const params = new URLSearchParams({
-      format: "json",
-      new_json: "1",
-      t: "0",
-      aggr: "1",
-      cr: "1",
-      p: "1",
-      n: "20",
-      w: keyword,
-    });
-    const body = await fetchJson<SearchResponse>(
-      `https://c.y.qq.com/soso/fcgi-bin/client_search_cp?${params.toString()}`,
-      { signal, headers: QQ_HEADERS },
-    );
-    const candidates = (body.data?.song?.list ?? [])
+    const songs = await searchSongs(keyword, signal);
+    const candidates = songs
       .map(toCandidate)
       .filter((item): item is LyricCandidate => item !== null);
     const best = pickBestCandidate(candidates, query);

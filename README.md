@@ -16,7 +16,7 @@ nub install
 
 把音频和歌词放到 `public/`（Studio 默认用 `OneLastKiss.flac` + `OneLastKiss.ttml`）。歌词支持 `.lrc` / `.ttml` / `.yrc` / `.qrc` / `.lys`。
 
-只有音频、缺歌词或封面时，可先备料（联网匹配后写出 json + 文件），说明见 [`src/prepare/README.md`](src/prepare/README.md)：
+只有音频、缺歌词或封面时，可先备料。备料会先把音轨和同目录封面、歌词拷到项目根目录 `预处理/<源目录名>/`，再联网匹配并写出 json，说明见 [`src/prepare/README.md`](src/prepare/README.md)：
 
 ```console
 nub run prepare -- --audio <音频或CUE>

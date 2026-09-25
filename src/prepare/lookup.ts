@@ -172,7 +172,7 @@ export async function lookupTrack(options: {
     query,
   );
 
-  const lyricOffsetMs = lyric
+  const suspectedLyricOffsetMs = lyric
     ? await resolveLyricOffsetMs({
         audioPath: options.audioPath,
         startSeconds: options.audioStartSeconds ?? 0,
@@ -225,6 +225,6 @@ export async function lookupTrack(options: {
         }
       : undefined,
     cover,
-    lyricOffsetMs,
+    suspectedLyricOffsetMs,
   };
 }

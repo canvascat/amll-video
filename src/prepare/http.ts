@@ -54,9 +54,13 @@ export async function fetchText(
   options: {
     signal?: AbortSignal;
     headers?: Record<string, string>;
+    method?: string;
+    body?: string;
   } = {},
 ): Promise<string> {
   const response = await fetch(url, {
+    method: options.method,
+    body: options.body,
     signal: options.signal,
     headers: {
       "User-Agent": USER_AGENT,
@@ -74,6 +78,8 @@ export async function fetchJson<T>(
   options: {
     signal?: AbortSignal;
     headers?: Record<string, string>;
+    method?: string;
+    body?: string;
     array?: boolean;
   } = {},
 ): Promise<T> {
