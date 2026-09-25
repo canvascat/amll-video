@@ -48,6 +48,18 @@ test("跨源选词时，时长更接近的版本压过更好的歌词格式", ()
   assert.equal(chosen?.candidate.duration, 274_500);
 });
 
+test("都在可接受时长内时，逐字歌词压过更贴时长的整行歌词", () => {
+  const chosen = pickBestLyric(
+    [
+      hit("lrc", { duration: 274_000 }, "embedded"),
+      hit("yrc", { duration: 269_000 }, "kugou"),
+    ],
+    query,
+  );
+  assert.equal(chosen?.format, "yrc");
+  assert.equal(chosen?.source, "kugou");
+});
+
 test("时长同样接近时，才用更好的歌词格式", () => {
   const chosen = pickBestLyric(
     [
