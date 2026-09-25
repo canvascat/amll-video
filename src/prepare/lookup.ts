@@ -57,7 +57,7 @@ async function resolveLyricOffsetMs(options: {
       return undefined;
     }
     console.log(
-      `自动对齐歌词 ${estimated.offsetMs}ms（《${options.query.title}》）`,
+      `疑似歌词偏移 ${estimated.offsetMs}ms（《${options.query.title}》）`,
     );
     return estimated.offsetMs;
   } catch {

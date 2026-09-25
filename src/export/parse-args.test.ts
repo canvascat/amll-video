@@ -29,6 +29,12 @@ test("--album 走专辑播放器", () => {
   assert.equal(args.album, true);
 });
 
+test("--srt 只生成专辑字幕", () => {
+  const args = parseExportArgs(["月光之城.cue", "--srt"]);
+  assert.equal(args.srt, true);
+  assert.equal(args.album, true);
+});
+
 test("传入 .cue 时自动走专辑模式", () => {
   const args = parseExportArgs(["菲卖品.cue"]);
   assert.equal(args.album, true);

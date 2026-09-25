@@ -20,6 +20,7 @@ export type ExportArgs = {
   concurrency: string;
   preview?: boolean;
   album?: boolean;
+  srt?: boolean;
 };
 
 export const USAGE = `用法: nub run export -- <配置.json> [选项]
@@ -39,6 +40,7 @@ json 相对配置文件所在目录解析音频 / 歌词 / 封面。
   --concurrency  并行渲染路数，数字或 50%；默认 1 路
   --preview      打开 Remotion Studio 预览，而不是直接导出
   --album        用 AlbumPlayer：毛玻璃封面、整轨一条音频、按时间切歌名。传入 .cue 时自动开启
+  --srt          只为整轨 .cue 写出字幕：按曲目起点拼接，不写入偏移，并列出疑似偏移
   -h, --help
 
 不传配置并加上 --preview 时，打开 Studio 预览默认曲目。
@@ -54,6 +56,7 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     concurrency?: string;
     preview?: boolean;
     album?: boolean;
+    srt?: boolean;
     help?: boolean;
   };
   let positionals: string[];
@@ -69,6 +72,7 @@ export function parseExportArgs(argv: string[]): ExportArgs {
         concurrency: { type: "string" },
         preview: { type: "boolean" },
         album: { type: "boolean" },
+        srt: { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
       allowPositionals: true,
@@ -107,6 +111,7 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     frames: values.frames,
     concurrency: parseConcurrency(values.concurrency),
     preview: Boolean(values.preview),
+    srt: Boolean(values.srt),
     album: Boolean(values.album) || (config ? path.extname(config).toLowerCase() === ".cue" : false),
   };
 }
