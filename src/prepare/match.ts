@@ -204,11 +204,19 @@ export function pickBestLyric(
     const delta =
       durationDeltaMs(hit.candidate, query) ?? Number.POSITIVE_INFINITY;
     const rank = lyricFormatRank(hit.format);
+    const wordLevel = rank >= lyricFormatRank("yrc");
+    const bestWordLevel = bestRank >= lyricFormatRank("yrc");
     const closer = delta < bestDelta - DURATION_SIMILAR_MS;
     const farther = delta > bestDelta + DURATION_SIMILAR_MS;
     const betterFormat =
       rank > bestRank || (rank === bestRank && score > bestScore);
-    if (!best || closer || (!farther && betterFormat)) {
+    const wordBeatsLine = wordLevel && !bestWordLevel;
+    const lineLosesToWord = !wordLevel && bestWordLevel;
+    if (
+      !best ||
+      wordBeatsLine ||
+      (!lineLosesToWord && (closer || (!farther && betterFormat)))
+    ) {
       best = hit;
       bestDelta = delta;
       bestRank = rank;
