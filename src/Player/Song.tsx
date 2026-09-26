@@ -17,6 +17,7 @@ export const SongPlayer: React.FC<TrackProps> = ({
   albumName = "",
   lyricLines = [],
   audioOffsetInSeconds,
+  backgroundMotion = "slow",
 }) => {
   const { fps } = useVideoConfig();
   const { isRendering } = getRemotionEnvironment();
@@ -84,6 +85,7 @@ export const SongPlayer: React.FC<TrackProps> = ({
             audioSrc={audioSrc}
             coverUrl={coverSrc}
             hasLyric={lyricLines.length > 0}
+            motion={backgroundMotion}
           />
           <div
             style={{

@@ -188,12 +188,18 @@ function albumPropsFrom(items: MaterializedTrack[]): AlbumCompositionProps {
   };
 }
 
-function singleTrackProps(items: MaterializedTrack[]): PlayerCompositionProps {
+function singleTrackProps(
+  items: MaterializedTrack[],
+  background: ExportArgs["background"],
+): PlayerCompositionProps {
   const single = items[0];
   if (!single || items.length !== 1) {
     throw new UsageError("AMLLPlayer 只支持单曲");
   }
-  return single.track;
+  return {
+    ...single.track,
+    backgroundMotion: background ?? "slow",
+  };
 }
 
 async function prepareCueExportJob(args: ExportArgs): Promise<ExportJob> {
@@ -201,6 +207,9 @@ async function prepareCueExportJob(args: ExportArgs): Promise<ExportJob> {
     throw new Error("需要 CUE 文件");
   }
 
+  if (args.background) {
+    console.log("专辑背景是封面模糊，已忽略 --background");
+  }
   const album = await loadCueAlbum({ cuePath: path.resolve(args.config) });
   const publicDir = await mkdtemp(
     path.join(await ensureProjectTmpDir(), "rmv-export-"),
@@ -286,6 +295,9 @@ export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {
       }),
     );
   }
+  if (args.album && args.background) {
+    console.log("专辑背景是封面模糊，已忽略 --background");
+  }
   const albumTracks = args.album ? albumTracksFrom(materialized) : [];
   const durationInFrames = args.album
     ? albumSpanInFrames(albumTracks, args.fps)
@@ -299,7 +311,9 @@ export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {
     durationInFrames: Math.max(1, durationInFrames),
     outputPath: losslessOutputPath(args.out ?? defaultOutputPath(loaded.title)),
     sourceAudios: sourceAudiosForJob(materialized),
-    inputProps: args.album ? albumPropsFrom(materialized) : singleTrackProps(materialized),
+    inputProps: args.album
+      ? albumPropsFrom(materialized)
+      : singleTrackProps(materialized, args.background),
   };
 }
 

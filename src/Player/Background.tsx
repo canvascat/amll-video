@@ -7,12 +7,17 @@ import { useWindowedAudioData, visualizeAudio } from "@remotion/media-utils";
 import type { FC } from "react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useCurrentFrame, useVideoConfig } from "remotion";
+import {
+  resolveBackgroundMotion,
+  type BackgroundMotion,
+} from "./background-motion";
 
 export const PlayerBackground: FC<{
   audioSrc: string;
   coverUrl: string;
   hasLyric: boolean;
-}> = ({ audioSrc, coverUrl, hasLyric }) => {
+  motion?: BackgroundMotion;
+}> = ({ audioSrc, coverUrl, hasLyric, motion }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -40,8 +45,21 @@ export const PlayerBackground: FC<{
     lowFreqVolume = Math.min(1, bass * 3);
   }
 
-  const rendererPropsRef = useRef({ album, fps, lowFreqVolume, hasLyric });
-  rendererPropsRef.current = { album, fps, lowFreqVolume, hasLyric };
+  const backgroundMotion = resolveBackgroundMotion(motion);
+  const rendererPropsRef = useRef({
+    album,
+    fps,
+    lowFreqVolume,
+    hasLyric,
+    backgroundMotion,
+  });
+  rendererPropsRef.current = {
+    album,
+    fps,
+    lowFreqVolume,
+    hasLyric,
+    backgroundMotion,
+  };
 
   useLayoutEffect(() => {
     const backgroundRender = BackgroundRender.new(MeshGradientRenderer);
@@ -55,6 +73,8 @@ export const PlayerBackground: FC<{
     backgroundRender.setRenderScale(1);
     backgroundRender.setLowFreqVolume(current.lowFreqVolume);
     backgroundRender.setHasLyric(current.hasLyric);
+    backgroundRender.setFlowSpeed(current.backgroundMotion.flowSpeed);
+    backgroundRender.setStaticMode(current.backgroundMotion.staticMode);
     backgroundRender.resume();
 
     const element = backgroundRender.getElement();
@@ -90,6 +110,18 @@ export const PlayerBackground: FC<{
   useEffect(() => {
     coreBGRenderRef.current?.setHasLyric(hasLyric);
   }, [hasLyric]);
+
+  useEffect(() => {
+    const renderer = coreBGRenderRef.current;
+    if (!renderer) {
+      return;
+    }
+    renderer.setFlowSpeed(backgroundMotion.flowSpeed);
+    renderer.setStaticMode(backgroundMotion.staticMode);
+    if (!backgroundMotion.staticMode) {
+      renderer.resume();
+    }
+  }, [backgroundMotion.flowSpeed, backgroundMotion.staticMode]);
 
   return (
     <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>

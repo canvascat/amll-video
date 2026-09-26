@@ -41,6 +41,21 @@ test("传入 .cue 时自动走专辑模式", () => {
   assert.equal(args.config, "菲卖品.cue");
 });
 
+test("背景动效默认放慢，也可改成静止", () => {
+  assert.equal(parseExportArgs(["song.json"]).background, undefined);
+  assert.equal(
+    parseExportArgs(["song.json", "--background", "static"]).background,
+    "static",
+  );
+});
+
+test("无效背景动效会报错", () => {
+  assert.throws(
+    () => parseExportArgs(["song.json", "--background", "fast"]),
+    UsageError,
+  );
+});
+
 test("无效并行路数会报错", () => {
   assert.throws(
     () => parseExportArgs(["album.json", "--concurrency", "0"]),

@@ -1,5 +1,9 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
+import {
+  parseBackgroundMotion,
+  type BackgroundMotion,
+} from "../Player/background-motion";
 import { DEFAULT_FPS } from "../remotion/constants";
 
 export class UsageError extends Error {
@@ -21,6 +25,7 @@ export type ExportArgs = {
   preview?: boolean;
   album?: boolean;
   srt?: boolean;
+  background?: BackgroundMotion;
 };
 
 export const USAGE = `用法: nub run export -- <配置.json> [选项]
@@ -39,6 +44,7 @@ json 相对配置文件所在目录解析音频 / 歌词 / 封面。
   --frames       只渲染部分帧，例如 0-2（调试用）
   --concurrency  并行渲染路数，数字或 50%；默认 1 路
   --preview      打开 Remotion Studio 预览，而不是直接导出
+  --background   AMLLPlayer 背景：slow（默认，一半速度）、static（静止）、normal（原来的速度）
   --album        用 AlbumPlayer：毛玻璃封面、整轨一条音频、按时间切歌名。传入 .cue 时自动开启
   --srt          只为整轨 .cue 写出字幕：按曲目起点拼接，不写入偏移，并列出疑似偏移
   -h, --help
@@ -57,6 +63,7 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     preview?: boolean;
     album?: boolean;
     srt?: boolean;
+    background?: string;
     help?: boolean;
   };
   let positionals: string[];
@@ -73,6 +80,7 @@ export function parseExportArgs(argv: string[]): ExportArgs {
         preview: { type: "boolean" },
         album: { type: "boolean" },
         srt: { type: "boolean" },
+        background: { type: "string" },
         help: { type: "boolean", short: "h" },
       },
       allowPositionals: true,
@@ -104,6 +112,16 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     throw new UsageError(`无效的 --fps: ${values.fps}`);
   }
 
+  let background: BackgroundMotion | undefined;
+  if (values.background !== undefined) {
+    try {
+      background = parseBackgroundMotion(values.background);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new UsageError(`${message}\n\n${USAGE}`);
+    }
+  }
+
   return {
     config,
     out: values.out,
@@ -112,6 +130,7 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     concurrency: parseConcurrency(values.concurrency),
     preview: Boolean(values.preview),
     srt: Boolean(values.srt),
+    background,
     album: Boolean(values.album) || (config ? path.extname(config).toLowerCase() === ".cue" : false),
   };
 }

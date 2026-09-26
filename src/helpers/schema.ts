@@ -13,6 +13,7 @@ export const trackSchema = z.object({
   durationInSeconds: z.number().optional(),
   lyricOffsetMs: z.number().optional(),
   lyricLines: z.array(z.any()).optional(),
+  backgroundMotion: z.enum(["slow", "static", "normal"]).optional(),
 });
 
 export const playerCompositionSchema = trackSchema;
