@@ -13,6 +13,7 @@ const defaultTrack: PlayerCompositionProps = {
   artistName: prepared.artistName,
   albumName: prepared.albumName,
   durationInSeconds: prepared.durationInSeconds,
+  backgroundMotion: "slow",
 };
 
 export const defaultPlayerProps: PlayerCompositionProps = defaultTrack;

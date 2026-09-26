@@ -60,6 +60,7 @@ nub src/export/cli.ts --config <配置.json>
 | `--frames` | 只渲染部分帧，例如 `0-2`（调试） |
 | `--concurrency` | 并行渲染路数，数字或 `50%`；默认 1 路。开太高歌词会闪 |
 | `--preview` | 打开 Studio，不导出 |
+| `--background` | AMLLPlayer 背景：`slow`（默认，一半速度）、`static`（静止）、`normal`（原来的速度） |
 | `--album` | 用 `AlbumPlayer`：毛玻璃封面、整轨一条音频、按时间切歌名。直接传入 `.cue` 时自动开启，不需要歌词 |
 | `-h` | 打印帮助 |
 
