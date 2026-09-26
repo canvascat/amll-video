@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  parseLyricFormatPreference,
   pickBestCandidate,
   pickBestLyric,
   needsLyricAlign,
@@ -97,6 +98,51 @@ test("内嵌 lrc 仍要联网找更高优先级格式", () => {
   assert.equal(shouldSearchLyrics({ format: "lrc" }), true);
   assert.equal(shouldSearchLyrics({ format: "yrc" }), true);
   assert.equal(shouldSearchLyrics(undefined), true);
+});
+
+test("指定 krc 时，酷狗逐字压过更贴时长的其它歌词", () => {
+  const chosen = pickBestLyric(
+    [
+      hit("yrc", { duration: 274_000 }, "netease"),
+      hit("ttml", { duration: 274_000 }, "amll-ttml"),
+      hit("lrc", { duration: 274_000 }, "kugou"),
+      hit("yrc", { duration: 260_000 }, "kugou"),
+    ],
+    query,
+    "krc",
+  );
+  assert.equal(chosen?.source, "kugou");
+  assert.equal(chosen?.format, "yrc");
+});
+
+test("指定 yrc 时，yrc 压过同时长的 ttml", () => {
+  const chosen = pickBestLyric(
+    [
+      hit("ttml", { duration: 274_000 }, "amll-ttml"),
+      hit("yrc", { duration: 274_000 }, "netease"),
+    ],
+    query,
+    "yrc",
+  );
+  assert.equal(chosen?.format, "yrc");
+  assert.equal(chosen?.source, "netease");
+});
+
+test("指定的格式一份都没有时退回默认选择", () => {
+  const chosen = pickBestLyric(
+    [
+      hit("lrc", { duration: 274_000 }, "lrclib"),
+      hit("ttml", { duration: 273_500 }, "amll-ttml"),
+    ],
+    query,
+    "krc",
+  );
+  assert.equal(chosen?.format, "ttml");
+});
+
+test("歌词格式参数接受 krc，不认识的格式会报错", () => {
+  assert.equal(parseLyricFormatPreference("KRC"), "krc");
+  assert.throws(() => parseLyricFormatPreference("srt"), /不支持的歌词格式/);
 });
 
 test("已经有 ttml 才跳过歌词搜索", () => {

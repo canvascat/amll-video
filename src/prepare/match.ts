@@ -1,6 +1,28 @@
 import { lyricFormatRank } from "./lyric-quality";
 import type { LyricCandidate, ProviderLyric, TrackQuery } from "./types";
 
+const LYRIC_FORMAT_PREFERENCES = ["krc", "ttml", "yrc", "qrc", "lys", "lrc"] as const;
+
+export type LyricFormatPreference = (typeof LYRIC_FORMAT_PREFERENCES)[number];
+
+export function parseLyricFormatPreference(value: string): LyricFormatPreference {
+  const normalized = value.trim().toLowerCase();
+  if ((LYRIC_FORMAT_PREFERENCES as readonly string[]).includes(normalized)) {
+    return normalized as LyricFormatPreference;
+  }
+  throw new Error(`不支持的歌词格式: ${value}`);
+}
+
+export function lyricMatchesPreference(
+  hit: ProviderLyric,
+  preference: LyricFormatPreference,
+): boolean {
+  if (preference === "krc") {
+    return hit.source === "kugou" && hit.format === "yrc";
+  }
+  return hit.format === preference;
+}
+
 const NAME_CONTAIN_MIN_RATIO = 0.34;
 const DURATION_CLOSE_MS = 5000;
 const DURATION_FAR_MS = 20000;
@@ -187,7 +209,7 @@ export function shouldSearchLyrics(
   return embedded?.format !== "ttml";
 }
 
-export function pickBestLyric(
+function selectLyric(
   hits: readonly ProviderLyric[],
   query: TrackQuery,
 ): ProviderLyric | null {
@@ -224,4 +246,18 @@ export function pickBestLyric(
     }
   }
   return best;
+}
+
+export function pickBestLyric(
+  hits: readonly ProviderLyric[],
+  query: TrackQuery,
+  preference?: LyricFormatPreference,
+): ProviderLyric | null {
+  if (!preference) {
+    return selectLyric(hits, query);
+  }
+  const preferred = hits.filter((hit) =>
+    lyricMatchesPreference(hit, preference),
+  );
+  return selectLyric(preferred, query) ?? selectLyric(hits, query);
 }
