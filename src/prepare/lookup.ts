@@ -3,7 +3,13 @@ import { parseLyricText } from "../helpers/lyrics";
 import { readRmsEnvelope } from "./audio-envelope";
 import { LOOKUP_TIMEOUT_MS, fetchBytes, mergeSignals } from "./http";
 import { estimateLyricOffsetMs, lyricOnsetTimesMs } from "./lyric-offset";
-import { buildSearchKeyword, pickBestLyric, shouldSearchLyrics } from "./match";
+import {
+  buildSearchKeyword,
+  lyricMatchesPreference,
+  pickBestLyric,
+  shouldSearchLyrics,
+  type LyricFormatPreference,
+} from "./match";
 import { overlayAmlTtml } from "./providers/amll-ttml";
 import { lookupItunes } from "./providers/itunes";
 import { lookupKugou } from "./providers/kugou";
@@ -90,6 +96,7 @@ export async function lookupTrack(options: {
   audioStartSeconds?: number;
   cover?: ResolvedCover;
   ignoreEmbeddedLyric?: boolean;
+  lyricFormat?: LyricFormatPreference;
   signal?: AbortSignal;
 }): Promise<LookupResult> {
   const tags = await readLocalTags(options.audioPath);
@@ -170,7 +177,18 @@ export async function lookupTrack(options: {
       ...platformHits,
     ],
     query,
+    options.lyricFormat,
   );
+  if (
+    options.lyricFormat &&
+    (!lyric || !lyricMatchesPreference(lyric, options.lyricFormat))
+  ) {
+    console.log(
+      lyric
+        ? `没有 ${options.lyricFormat}，已改用 ${lyric.source} ${lyric.format}`
+        : `没有 ${options.lyricFormat}`,
+    );
+  }
 
   const suspectedLyricOffsetMs = lyric
     ? await resolveLyricOffsetMs({

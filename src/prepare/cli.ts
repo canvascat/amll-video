@@ -4,6 +4,7 @@ import { parseArgs } from "node:util";
 import { prepareCueAlbum } from "./album";
 import { isCuePath } from "./cue";
 import { lookupTrack } from "./lookup";
+import { parseLyricFormatPreference, type LyricFormatPreference } from "./match";
 import { stagePrepareInput } from "./stage";
 import { writeVideoBlurb } from "./video-blurb";
 import { writeMaterials } from "./write-materials";
@@ -41,6 +42,7 @@ const USAGE = `用法: nub run prepare -- --audio <音频或CUE> [--out <目录>
   --artist  覆盖艺术家
   --album   覆盖专辑名
   --lyric-offset  核对后确认的歌词偏移（毫秒）。不传则只报告疑似值，不写入
+  --lyric-format  优先使用的歌词格式：krc、ttml、yrc、qrc、lys、lrc。没有该格式时退回默认选择。krc 是酷狗逐字稿，写出时仍是 yrc
   -h, --help
 `;
 
@@ -51,6 +53,7 @@ type PrepareArgs = {
   artist?: string;
   album?: string;
   lyricOffset?: number;
+  lyricFormat?: LyricFormatPreference;
 };
 
 function parsePrepareArgs(argv: string[]): PrepareArgs {
@@ -62,6 +65,7 @@ function parsePrepareArgs(argv: string[]): PrepareArgs {
     artist?: string;
     album?: string;
     "lyric-offset"?: string;
+    "lyric-format"?: string;
     help?: boolean;
   };
 
@@ -75,6 +79,7 @@ function parsePrepareArgs(argv: string[]): PrepareArgs {
         artist: { type: "string" },
         album: { type: "string" },
         "lyric-offset": { type: "string" },
+        "lyric-format": { type: "string" },
         help: { type: "boolean", short: "h" },
       },
       allowPositionals: false,
@@ -99,6 +104,16 @@ function parsePrepareArgs(argv: string[]): PrepareArgs {
     }
   }
 
+  let lyricFormat: LyricFormatPreference | undefined;
+  if (values["lyric-format"] !== undefined) {
+    try {
+      lyricFormat = parseLyricFormatPreference(values["lyric-format"]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new UsageError(`${message}\n\n${USAGE}`);
+    }
+  }
+
   return {
     audio: values.audio,
     out: values.out,
@@ -106,6 +121,7 @@ function parsePrepareArgs(argv: string[]): PrepareArgs {
     artist: values.artist,
     album: values.album,
     lyricOffset,
+    lyricFormat,
   };
 }
 
@@ -129,6 +145,9 @@ async function main() {
     const outDir = path.resolve(args.out ?? staged.dir);
 
     if (isCuePath(inputPath)) {
+      if (args.lyricFormat) {
+        console.log("整轨不匹配歌词，已忽略 --lyric-format");
+      }
       const { jsonPath, trackCount } = await prepareCueAlbum({
         cuePath: staged.inputPath,
         outDir,
@@ -144,6 +163,7 @@ async function main() {
       title: args.title,
       artist: args.artist,
       album: args.album,
+      lyricFormat: args.lyricFormat,
     });
     const { jsonPath, prepared, hasLyrics } = await writeMaterials({
       audioPath: staged.inputPath,
@@ -156,8 +176,16 @@ async function main() {
     console.log(
       `${prepared.songName} / ${prepared.artistName} / ${prepared.albumName}`,
     );
+    const usedPreferredFormat =
+      args.lyricFormat === "krc"
+        ? prepared.match.lyricSource === "kugou" &&
+          prepared.match.lyricFormat === "yrc"
+        : Boolean(
+            args.lyricFormat &&
+              prepared.match.lyricFormat === args.lyricFormat,
+          );
     console.log(
-      `歌词: ${prepared.match.lyricSource ?? "无"} ${prepared.match.lyricFormat ?? ""}`.trim(),
+      `歌词: ${prepared.match.lyricSource ?? "无"} ${prepared.match.lyricFormat ?? ""}${usedPreferredFormat ? `（优先 ${args.lyricFormat}）` : ""}`.trim(),
     );
     console.log(`封面: ${prepared.match.coverSource ?? "无"}`);
     if (args.lyricOffset !== undefined) {
