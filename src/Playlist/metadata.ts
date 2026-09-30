@@ -15,9 +15,9 @@ export async function resolvePlaylistMetadata(
   props: PlaylistCompositionProps,
   resolveTrack: (track: TrackProps) => Promise<TrackProps>,
 ): Promise<{ fps: number; durationInFrames: number; props: PlaylistCompositionProps }> {
-  const tracks = props.tracks.every(ready)
-    ? props.tracks
-    : await Promise.all(props.tracks.map((track) => resolveTrack(track)));
+  const tracks = await Promise.all(
+    props.tracks.map((track) => (ready(track) ? track : resolveTrack(track))),
+  );
   const durationInFrames = playlistTrackSpans(tracks, DEFAULT_FPS)
     .reduce((sum, span) => sum + span.durationInFrames, 0);
   return {

@@ -62,13 +62,13 @@ export const PlaylistPoster: React.FC<{
         <div style={{ opacity: 0.8 }}>{artist}</div>
       </div>
       {showLyrics ? (
-        <div style={{ position: "absolute", inset: 0 }}>
+        <div style={{ position: "absolute", left: 24, right: 24, top: 48, bottom: 72, overflow: "hidden" }}>
           {lyrics.map((piece, pieceIndex) => (
             <div
               key={`${piece.y}-${piece.x}-${pieceIndex}`}
               style={{
                 position: "absolute",
-                left: 24 + piece.x,
+                left: piece.x,
                 top: piece.y,
                 width: piece.width,
                 height: piece.height,

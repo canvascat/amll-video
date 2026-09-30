@@ -110,16 +110,45 @@ export function layoutPlaylistLyric(input: {
   const padding = 24;
   const maxWidth = Math.max(1, width - padding * 2);
   const mainHeight = 38;
-  let y = padding;
+  let x = 0;
+  let y = 0;
   const pieces: LyricPiece[] = [];
   for (const word of line.words) {
-    const wordPieces = wrap(word.word, MAIN_FONT, mainHeight, maxWidth, measure, wordFill(line, word, timeMs), false, y);
+    if (!word.word) continue;
+    const fill = wordFill(line, word, timeMs);
+    const size = measure(word.word, MAIN_FONT);
+    if (size.width <= maxWidth) {
+      if (x > 0 && x + size.width > maxWidth) {
+        x = 0;
+        y += mainHeight;
+      }
+      pieces.push({
+        text: word.word,
+        x,
+        y,
+        width: size.width,
+        height: mainHeight,
+        fill,
+        translation: false,
+      });
+      x += size.width;
+      continue;
+    }
+    if (x > 0) {
+      x = 0;
+      y += mainHeight;
+    }
+    const wordPieces = wrap(word.word, MAIN_FONT, mainHeight, maxWidth, measure, fill, false, y);
     pieces.push(...wordPieces);
-    const rows = new Set(wordPieces.map((piece) => piece.y));
-    y += Math.max(1, rows.size) * mainHeight;
+    const lastY = Math.max(...wordPieces.map((piece) => piece.y));
+    x = wordPieces
+      .filter((piece) => piece.y === lastY)
+      .reduce((end, piece) => Math.max(end, piece.x + piece.width), 0);
+    y = lastY;
   }
   const translation = line.translatedLyric.trim();
   if (!translation) return pieces;
+  if (pieces.length > 0) y += mainHeight;
   const translated = wrap(translation, TRANSLATION_FONT, 22, maxWidth, measure, wordFill(line, line.words[0] ?? { word: "", startTime: line.startTime, endTime: line.endTime, obscene: false }, timeMs), true, y);
   const rows = [...new Set(translated.map((piece) => piece.y))].slice(0, 2);
   return [...pieces, ...translated.filter((piece) => rows.includes(piece.y))];
