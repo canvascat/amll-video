@@ -1,6 +1,7 @@
 import { parseFile } from "music-metadata";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { detectLyricFormat, parseLyricText } from "../helpers/lyrics";
 import { fetchJson, fetchText } from "./http";
 import { fileStem } from "./write-materials";
 
@@ -100,9 +101,12 @@ async function collectFacts(audioPath: string, lyricPath?: string) {
   ]);
   const appleId = readTtmlValues(lyricText, "appleMusicId")[0];
   const qqId = readTtmlValues(lyricText, "qqMusicId")[0];
-  const [apple, credits] = await Promise.all([
+  const lyricCredits = creditsFromLyric(lyricText, lyricPath);
+  const [apple, qqCredits] = await Promise.all([
     appleId ? lookupApple(appleId) : Promise.resolve(undefined),
-    qqId ? lookupQqCredits(qqId) : Promise.resolve([]),
+    lyricCredits.length || !qqId
+      ? Promise.resolve([])
+      : lookupQqCredits(qqId),
   ]);
 
   return {
@@ -111,7 +115,11 @@ async function collectFacts(audioPath: string, lyricPath?: string) {
     albumName: common.album?.trim() || readTtmlValues(lyricText, "album")[0] || "",
     releaseDate: common.date?.trim() || apple?.releaseDate,
     genre: common.genre?.filter(Boolean).join("、") || apple?.genre,
-    credits: credits.length ? credits : tagCredits(common.composer),
+    credits: lyricCredits.length
+      ? lyricCredits
+      : qqCredits.length
+        ? qqCredits
+        : tagCredits(common.composer),
     sampleRate: metadata.format.sampleRate,
     bitsPerSample: metadata.format.bitsPerSample,
     channels: metadata.format.numberOfChannels,
@@ -187,18 +195,43 @@ async function lookupQqCredits(mid: string): Promise<Credit[]> {
   }
 }
 
+const CREDIT_LINE =
+  /^(制作人|作词|作曲|编曲|词|曲)\s*[:：]\s*(.+)$/;
+
+export function creditsFromLyric(text: string, lyricPath?: string): Credit[] {
+  if (!text.trim()) {
+    return [];
+  }
+  if (lyricPath) {
+    try {
+      const lines = parseLyricText(text, detectLyricFormat(lyricPath));
+      const plain = lines
+        .map((line) => line.words.map((word) => word.word).join(""))
+        .join("\n");
+      const parsed = parseCreditLines(plain);
+      if (parsed.length) {
+        return parsed;
+      }
+    } catch {
+      // 解析失败时再按纯文本扫一遍
+    }
+  }
+  return parseCreditLines(text);
+}
+
 export function parseCreditLines(lyric: string): Credit[] {
   const credits: Credit[] = [];
   for (const raw of lyric.split(/\r?\n/)) {
     const line = raw.replace(/^\[[^\]]+\]/, "").trim();
-    const match = line.match(/^(词|曲|编曲|制作人)\s*[:：]\s*(.+)$/);
+    const match = line.match(CREDIT_LINE);
     if (!match?.[1] || !match[2]) {
       continue;
     }
-    if (!CREDIT_ROLES.includes(match[1] as (typeof CREDIT_ROLES)[number])) {
+    const role = match[1].replace(/^作/, "");
+    if (!CREDIT_ROLES.includes(role as (typeof CREDIT_ROLES)[number])) {
       continue;
     }
-    credits.push({ role: match[1], name: match[2].replace(/\//g, "、").trim() });
+    credits.push({ role, name: match[2].replace(/\//g, "、").trim() });
   }
   return credits;
 }
