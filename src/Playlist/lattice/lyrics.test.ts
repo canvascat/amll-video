@@ -34,6 +34,27 @@ test("逐字时间错开时按比例填充", () => {
   assert.equal(main[0]?.fill, 1);
   assert.equal(main[1]?.text, "好");
   assert.equal(main[1]?.fill, 0.5);
+  assert.equal(main[0]?.y, main[1]?.y);
+  assert.equal(main[1]?.x, (main[0]?.x ?? 0) + (main[0]?.width ?? 0));
+});
+
+test("一行放不下时换到下一行，超宽的词按字素切开", () => {
+  const current = line([
+    ["你", 0, 1000],
+    ["好", 1000, 2000],
+    ["很长的一个词", 2000, 3000],
+  ]);
+  const pieces = layoutPlaylistLyric({
+    line: current,
+    timeMs: 0,
+    width: 67,
+    height: 200,
+    measure,
+  }).filter((piece) => !piece.translation);
+  assert.equal(pieces[0]?.text, "你");
+  assert.equal(pieces[1]?.y, (pieces[0]?.y ?? 0) + 38);
+  assert.equal(pieces[1]?.x, 0);
+  assert.ok(pieces.some((piece) => piece.text.length > 0 && piece.text.length < "很长的一个词".length));
 });
 
 test("词的起止等于整行时，行一开始就整句出现", () => {

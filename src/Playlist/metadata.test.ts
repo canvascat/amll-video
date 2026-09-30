@@ -54,6 +54,25 @@ test("缺歌词时才把曲目交给解析函数", async () => {
   assert.equal(reads, 1);
 });
 
+test("已齐的曲目在别人缺歌词时保持原样", async () => {
+  const readyTrack = { ...track(2), lyricOffsetMs: 120, songName: "已齐" };
+  const unresolved = { ...track(3), lyricLines: [] as LyricLine[], songName: "未齐" };
+  let reads = 0;
+  const result = await resolvePlaylistMetadata(
+    { tracks: [readyTrack, unresolved] },
+    async (item) => {
+      reads += 1;
+      return { ...item, lyricLines: [lyric], lyricOffsetMs: 0, durationInSeconds: 9 };
+    },
+  );
+  assert.equal(reads, 1);
+  assert.equal(result.props.tracks[0]?.songName, "已齐");
+  assert.equal(result.props.tracks[0]?.lyricOffsetMs, 120);
+  assert.equal(result.props.tracks[0]?.lyricLines[0]?.startTime, 0);
+  assert.equal(result.props.tracks[0]?.durationInSeconds, 2);
+  assert.equal(result.props.tracks[1]?.durationInSeconds, 9);
+});
+
 test("schema 至少一首，默认歌单把同一首放两遍", () => {
   assert.equal(PLAYLIST_COMPOSITION_ID, "PlaylistPlayer");
   assert.equal(playlistCompositionSchema.safeParse({ tracks: [track(2)] }).success, true);
