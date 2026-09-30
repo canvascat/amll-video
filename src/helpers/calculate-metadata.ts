@@ -3,9 +3,11 @@ import type { CalculateMetadataFunction } from "remotion";
 import { DEFAULT_FPS } from "../remotion/constants";
 import { stripLyricMetadata } from "./lyric-metadata";
 import { loadLyricLines, shiftLyricLines } from "./lyrics";
+import { resolvePlaylistMetadata } from "../Playlist/metadata";
 import type {
   AlbumCompositionProps,
   PlayerCompositionProps,
+  PlaylistCompositionProps,
   TrackProps,
 } from "./schema";
 import { albumSpanInFrames, trackDurationInFrames } from "./track-duration";
@@ -16,7 +18,7 @@ const isBlank = (value: string | undefined): boolean =>
 const hasPositiveDuration = (value: number | undefined): value is number =>
   value !== undefined && Number.isFinite(value) && value > 0;
 
-async function resolveTrack(
+export async function resolveTrack(
   track: TrackProps,
   abortSignal: AbortSignal | undefined,
   options?: { lyrics?: boolean },
@@ -119,4 +121,12 @@ export const calculateAlbumMetadata: CalculateMetadataFunction<
       tracks,
     },
   };
+};
+
+export const calculatePlaylistMetadata: CalculateMetadataFunction<
+  PlaylistCompositionProps
+> = async ({ props, abortSignal }) => {
+  return resolvePlaylistMetadata(props, (track) =>
+    resolveTrack(track, abortSignal, { lyrics: true }),
+  );
 };

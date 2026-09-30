@@ -1,6 +1,6 @@
 import { staticFile } from "remotion";
 import prepared from "../../public/OneLastKiss.json";
-import type { AlbumCompositionProps, PlayerCompositionProps } from "./schema";
+import type { AlbumCompositionProps, PlayerCompositionProps, PlaylistCompositionProps } from "./schema";
 
 const defaultTrack: PlayerCompositionProps = {
   audioOffsetInSeconds: prepared.audioOffsetInSeconds,
@@ -14,6 +14,10 @@ const defaultTrack: PlayerCompositionProps = {
   albumName: prepared.albumName,
   durationInSeconds: prepared.durationInSeconds,
   backgroundMotion: "slow",
+};
+
+export const defaultPlaylistProps: PlaylistCompositionProps = {
+  tracks: [defaultTrack, defaultTrack],
 };
 
 export const defaultPlayerProps: PlayerCompositionProps = defaultTrack;
