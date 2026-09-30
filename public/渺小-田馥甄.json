@@ -1,0 +1,16 @@
+{
+  "audioFileUrl": "渺小-田馥甄.flac",
+  "lyricsFileUrl": "渺小-田馥甄.lrc",
+  "coverImageUrl": "渺小-田馥甄.jpg",
+  "audioOffsetInSeconds": 0,
+  "songName": "渺小",
+  "artistName": "田馥甄",
+  "albumName": "渺小",
+  "durationInSeconds": 284.19477083333334,
+  "lyricOffsetMs": 1400,
+  "match": {
+    "lyricSource": "embedded",
+    "lyricFormat": "lrc",
+    "coverSource": "embedded"
+  }
+}

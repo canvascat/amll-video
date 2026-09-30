@@ -1,0 +1,15 @@
+{
+  "audioFileUrl": "周杰伦 - 半岛铁盒.flac",
+  "lyricsFileUrl": "周杰伦 - 半岛铁盒.ttml",
+  "coverImageUrl": "周杰伦 - 半岛铁盒.jpg",
+  "audioOffsetInSeconds": 0,
+  "songName": "半岛铁盒",
+  "artistName": "周杰伦",
+  "albumName": "八度空间",
+  "durationInSeconds": 319.4004761904762,
+  "match": {
+    "lyricSource": "amll-ttml",
+    "lyricFormat": "ttml",
+    "coverSource": "embedded"
+  }
+}

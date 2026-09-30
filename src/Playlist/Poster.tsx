@@ -2,6 +2,8 @@ import { Img } from "remotion";
 import { playerFontFamily } from "../Player/font";
 import type { LyricPiece } from "./lattice/lyrics";
 
+export const PLAYLIST_LYRIC_CHROME = { top: 118, right: 24, bottom: 36, left: 24 };
+
 const collapsedShade =
   "linear-gradient(180deg, rgb(0 0 0 / 5%) 34%, rgb(0 0 0 / 24%) 56%, rgb(0 0 0 / 92%) 100%)";
 const expandedShade =
@@ -57,45 +59,91 @@ export const PlaylistPoster: React.FC<{
       >
         {current ? `正在播放 · ${index}` : index}
       </div>
-      <div style={{ position: "absolute", left: 17, right: 17, bottom: 17 }}>
-        <div style={{ fontWeight: 600 }}>{title}</div>
-        <div style={{ opacity: 0.8 }}>{artist}</div>
+      <div
+        style={{
+          position: "absolute",
+          left: 24,
+          right: 24,
+          top: showLyrics ? 48 : undefined,
+          bottom: showLyrics ? undefined : 17,
+        }}
+      >
+        <div style={{ fontWeight: 600, fontSize: showLyrics ? 22 : 16 }}>{title}</div>
+        <div style={{ opacity: 0.8, fontSize: showLyrics ? 14 : 13 }}>{artist}</div>
       </div>
       {showLyrics ? (
-        <div style={{ position: "absolute", left: 24, right: 24, top: 48, bottom: 72, overflow: "hidden" }}>
-          {lyrics.map((piece, pieceIndex) => (
-            <div
-              key={`${piece.y}-${piece.x}-${pieceIndex}`}
-              style={{
-                position: "absolute",
-                left: piece.x,
-                top: piece.y,
-                width: piece.width,
-                height: piece.height,
-                overflow: "hidden",
-                color: "white",
-                fontWeight: piece.translation ? 500 : 600,
-                fontSize: piece.translation ? 16 : 32,
-                lineHeight: `${piece.height}px`,
-                opacity: piece.translation ? 0.8 : 1,
-              }}
-            >
-              <span style={{ color: "rgb(255 255 255 / 35%)" }}>{piece.text}</span>
-              <span
+        <div
+          style={{
+            position: "absolute",
+            left: PLAYLIST_LYRIC_CHROME.left,
+            right: PLAYLIST_LYRIC_CHROME.right,
+            top: PLAYLIST_LYRIC_CHROME.top,
+            bottom: PLAYLIST_LYRIC_CHROME.bottom,
+            overflow: "hidden",
+          }}
+        >
+          {lyrics.map((piece, pieceIndex) => {
+            const current = piece.role === "current" && !piece.leaving;
+            const previous = lyrics[pieceIndex - 1];
+            if (previous?.lineKey === piece.lineKey) return null;
+            const block = lyrics.filter((item) => item.lineKey === piece.lineKey);
+            return (
+              <div
+                key={piece.lineKey}
                 style={{
                   position: "absolute",
                   left: 0,
-                  top: 0,
-                  width: `${piece.fill * 100}%`,
-                  overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  color: "white",
+                  top: piece.blockY,
+                  opacity: piece.opacity,
+                  filter: piece.blur > 0.05 ? `blur(${piece.blur}px)` : undefined,
+                  transform: `scale(${piece.scale})`,
+                  transformOrigin: "0 0",
+                  zIndex: current ? 4 : piece.role === "next" ? 2 : 1,
                 }}
               >
-                {piece.text}
-              </span>
-            </div>
-          ))}
+                {block.map((item, itemIndex) => (
+                  <div
+                    key={`${item.y}-${item.x}-${itemIndex}`}
+                    style={{
+                      position: "absolute",
+                      left: item.x,
+                      top: item.y,
+                      width: item.width,
+                      height: item.height,
+                      overflow: "hidden",
+                      whiteSpace: "nowrap",
+                      color: "white",
+                      fontWeight: item.translation ? 500 : 600,
+                      fontSize: item.fontSize,
+                      lineHeight: `${item.height}px`,
+                      opacity: item.translation ? 0.5 : 1,
+                    }}
+                  >
+                    {current && !item.translation ? (
+                      <>
+                        <span style={{ color: "rgb(255 255 255 / 35%)" }}>{item.text}</span>
+                        <span
+                          style={{
+                            position: "absolute",
+                            left: 0,
+                            top: 0,
+                            width: `${item.fill * 100}%`,
+                            overflow: "hidden",
+                            whiteSpace: "nowrap",
+                            color: "white",
+                          }}
+                        >
+                          {item.text}
+                        </span>
+                      </>
+                    ) : (
+                      <span style={{ whiteSpace: "nowrap" }}>{item.text}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       ) : null}
     </div>

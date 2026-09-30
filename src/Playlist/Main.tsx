@@ -2,15 +2,28 @@ import { Audio } from "@remotion/media";
 import { AbsoluteFill, Sequence, getRemotionEnvironment, useCurrentFrame, useVideoConfig } from "remotion";
 import { resolvePublicAsset } from "../helpers/public-asset";
 import type { PlaylistCompositionProps } from "../helpers/schema";
-import { layoutPlaylistLyric, lyricLineAt } from "./lattice/lyrics";
+import { layoutPlaylistLyric } from "./lattice/lyrics";
 import { playlistMotionAt } from "./lattice/motion";
 import { playlistTrackSpans } from "./lattice/timeline";
 import { buildPlaylistTiles } from "./lattice/tiles";
-import { PlaylistPoster } from "./Poster";
+import { playerFontFamily } from "../Player/font";
+import { PLAYLIST_LYRIC_CHROME, PlaylistPoster } from "./Poster";
+
+let glyphContext: CanvasRenderingContext2D | null | undefined;
+
+function glyphContext2d(): CanvasRenderingContext2D | null {
+  if (glyphContext !== undefined) return glyphContext;
+  glyphContext = typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d");
+  return glyphContext;
+}
 
 const measure = (text: string, font: string) => {
   const size = Number(/(\d+)px/.exec(font)?.[1] ?? 32);
-  return { width: text.length * size, height: size };
+  const weight = /^(\d+)/.exec(font)?.[1] ?? "600";
+  const context = glyphContext2d();
+  if (!context) return { width: text.length * size, height: size };
+  context.font = `${weight} ${size}px ${playerFontFamily}`;
+  return { width: Math.ceil(context.measureText(text).width), height: size };
 };
 
 export const PlaylistPlayer: React.FC<PlaylistCompositionProps> = ({ tracks }) => {
@@ -50,13 +63,12 @@ export const PlaylistPlayer: React.FC<PlaylistCompositionProps> = ({ tracks }) =
           const track = tracks[poster.queueIndex];
           const showLyrics = poster.active && motion.lyricsVisible;
           const timeMs = motion.localSeconds * 1000;
-          const line = showLyrics ? lyricLineAt(track?.lyricLines ?? [], timeMs) : null;
           const lyrics = showLyrics
             ? layoutPlaylistLyric({
-                line,
+                lines: track?.lyricLines ?? [],
                 timeMs,
                 width: poster.width,
-                height: poster.height,
+                height: Math.max(1, poster.height - PLAYLIST_LYRIC_CHROME.top - PLAYLIST_LYRIC_CHROME.bottom),
                 measure,
               })
             : [];
