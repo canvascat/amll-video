@@ -1,23 +1,48 @@
 import { staticFile } from "remotion";
-import prepared from "../../public/OneLastKiss.json";
+import oneLastKiss from "../../public/OneLastKiss.json";
+import tiehe from "../../public/周杰伦 - 半岛铁盒.json";
+import miaoxiao from "../../public/渺小-田馥甄.json";
 import type { AlbumCompositionProps, PlayerCompositionProps, PlaylistCompositionProps } from "./schema";
 
+type PreparedSong = {
+  audioFileUrl: string;
+  lyricsFileUrl: string;
+  coverImageUrl?: string;
+  audioOffsetInSeconds: number;
+  songName: string;
+  artistName: string;
+  albumName: string;
+  durationInSeconds: number;
+  lyricOffsetMs?: number;
+};
+
+function trackFromPrepared(prepared: PreparedSong): PlayerCompositionProps {
+  return {
+    audioOffsetInSeconds: prepared.audioOffsetInSeconds,
+    audioFileUrl: staticFile(prepared.audioFileUrl),
+    lyricsFileUrl: staticFile(prepared.lyricsFileUrl),
+    coverImageUrl: prepared.coverImageUrl
+      ? staticFile(prepared.coverImageUrl)
+      : undefined,
+    songName: prepared.songName,
+    artistName: prepared.artistName,
+    albumName: prepared.albumName,
+    durationInSeconds: prepared.durationInSeconds,
+    lyricOffsetMs: prepared.lyricOffsetMs,
+  };
+}
+
 const defaultTrack: PlayerCompositionProps = {
-  audioOffsetInSeconds: prepared.audioOffsetInSeconds,
-  audioFileUrl: staticFile(prepared.audioFileUrl),
-  lyricsFileUrl: staticFile(prepared.lyricsFileUrl),
-  coverImageUrl: prepared.coverImageUrl
-    ? staticFile(prepared.coverImageUrl)
-    : undefined,
-  songName: prepared.songName,
-  artistName: prepared.artistName,
-  albumName: prepared.albumName,
-  durationInSeconds: prepared.durationInSeconds,
+  ...trackFromPrepared(oneLastKiss),
   backgroundMotion: "slow",
 };
 
 export const defaultPlaylistProps: PlaylistCompositionProps = {
-  tracks: [defaultTrack, defaultTrack],
+  tracks: [
+    trackFromPrepared(oneLastKiss),
+    trackFromPrepared(miaoxiao),
+    trackFromPrepared(tiehe),
+  ],
 };
 
 export const defaultPlayerProps: PlayerCompositionProps = defaultTrack;
@@ -31,7 +56,7 @@ export const defaultAlbumProps: AlbumCompositionProps = {
     {
       songName: defaultTrack.songName,
       audioOffsetInSeconds: defaultTrack.audioOffsetInSeconds,
-      audioEndInSeconds: prepared.durationInSeconds,
+      audioEndInSeconds: oneLastKiss.durationInSeconds,
     },
   ],
 };
