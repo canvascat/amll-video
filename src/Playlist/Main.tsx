@@ -61,6 +61,8 @@ export const PlaylistPlayer: React.FC<PlaylistCompositionProps> = ({ tracks }) =
         {motion.posters.map((poster) => {
           const tile = tiles[poster.queueIndex];
           const track = tracks[poster.queueIndex];
+          const span = spans[poster.queueIndex];
+          const playing = poster.active && poster.queueIndex === motion.activeQueueIndex;
           const showLyrics = poster.active && motion.lyricsVisible;
           const timeMs = motion.localSeconds * 1000;
           const lyrics = showLyrics
@@ -93,6 +95,12 @@ export const PlaylistPlayer: React.FC<PlaylistCompositionProps> = ({ tracks }) =
                 expanded={poster.active}
                 lyrics={lyrics}
                 showLyrics={showLyrics}
+                audioSrc={playing && track ? resolvePublicAsset(track.audioFileUrl) : undefined}
+                audioFrame={
+                  playing && span
+                    ? Math.max(0, frame - span.startFrame + Math.round((track?.audioOffsetInSeconds ?? 0) * fps))
+                    : 0
+                }
               />
             </div>
           );
