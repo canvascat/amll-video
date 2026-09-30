@@ -9,10 +9,10 @@
 ## 命令
 
 ```console
-nub run prepare -- --audio <音频或CUE>
+nub run _prepare -- --audio <音频或CUE>
 ```
 
-等价于 `nub src/prepare/cli.ts --audio <音频>`。
+脚本名叫 `_prepare`，避免 npm 的 `prepare` 生命周期。等价于 `nub src/prepare/cli.ts --audio <音频>`。
 
 | 参数 | 说明 |
 | --- | --- |
@@ -25,7 +25,7 @@ nub run prepare -- --audio <音频或CUE>
 
 没有歌词时仍写出 json，并以非 0 退出，方便手动补歌词后再生成视频。封面缺失不算失败。
 
-单曲还会写出同名 `.txt`，里面是视频标题和简介：歌名、歌手、专辑和发行日来自音频标签，歌词文件里的词曲编曲优先于标签，缺发行信息时用 Apple Music 补。换歌词后需要重新备料，简介会跟着这次的歌词重写。
+单曲还会写出同名 `.txt`。标题是「歌手《歌名》｜专辑」。简介写演唱与收录、发行日、流派、词曲编曲和制作人、音源规格、时长。词曲编曲优先读这次的歌词；歌词里没有、且歌词带 QQ 音乐 id 时再查一次，否则用标签里的作曲。发行日和流派先用音频标签，缺了再用歌词里的 Apple Music id 补。换歌词后需要重新备料，简介会跟着这次的歌词重写。
 
 预览 / 导出只需要这份 json：
 
@@ -76,7 +76,7 @@ json 字段对齐 [`TrackProps`](../helpers/schema.ts)，另带 `match` 说明�
 ### 整轨 CUE
 
 ```console
-nub run prepare -- --audio "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.cue"
+nub run _prepare -- --audio "王菲.-.1997-03-01.-.菲卖品 王菲精选.-.新艺宝.cue"
 ```
 
 不切片、不复制整轨、不下载歌词。json 与音频同名。曲目只有歌名和起止时间（CUE `INDEX 01`，单位秒；最后一首的结束为整轨时长）：
