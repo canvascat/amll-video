@@ -1,8 +1,9 @@
 import { Img } from "remotion";
 import { playerFontFamily } from "../Player/font";
 import type { LyricPiece } from "./lattice/lyrics";
+import { PlaylistWaveform } from "./PlaylistWaveform";
 
-export const PLAYLIST_LYRIC_CHROME = { top: 118, right: 24, bottom: 36, left: 24 };
+export const PLAYLIST_LYRIC_CHROME = { top: 118, right: 24, bottom: 52, left: 24 };
 
 const collapsedShade =
   "linear-gradient(180deg, rgb(0 0 0 / 5%) 34%, rgb(0 0 0 / 24%) 56%, rgb(0 0 0 / 92%) 100%)";
@@ -18,7 +19,9 @@ export const PlaylistPoster: React.FC<{
   expanded: boolean;
   lyrics: LyricPiece[];
   showLyrics: boolean;
-}> = ({ coverUrl, title, artist, queueIndex, current, expanded, lyrics, showLyrics }) => {
+  audioSrc?: string;
+  audioFrame?: number;
+}> = ({ coverUrl, title, artist, queueIndex, current, expanded, lyrics, showLyrics, audioSrc, audioFrame }) => {
   const index = String(queueIndex + 1).padStart(2, "0");
   return (
     <div
@@ -145,6 +148,9 @@ export const PlaylistPoster: React.FC<{
             );
           })}
         </div>
+      ) : null}
+      {expanded && current && audioSrc ? (
+        <PlaylistWaveform src={audioSrc} frame={audioFrame ?? 0} />
       ) : null}
     </div>
   );
