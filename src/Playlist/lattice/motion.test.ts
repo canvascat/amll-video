@@ -54,7 +54,8 @@ test("开场已对准第一首，切歌从原位飞到下一首", () => {
 
   const arrived = playlistMotionAt(60 + Math.round(0.42 * fps), fps, spans);
   assert.notEqual(arrived.camera.y, atCut.camera.y);
-  assert.equal(arrived.lyricsVisible, true);
+  assert.equal(arrived.lyricsVisible, false);
+  assert.equal(playlistMotionAt(60 + fps, fps, spans).lyricsVisible, true);
 
   const mid = playlistMotionAt(60 + Math.round(0.2 * fps), fps, spans);
   const active = mid.posters.find((poster) => poster.instanceId === mid.activeInstanceId);

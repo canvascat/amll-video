@@ -204,11 +204,7 @@ export function playlistMotionAt(frame: number, fps: number, spans: readonly Tra
     posters,
     activeQueueIndex: time.index,
     activeInstanceId: segment.toInstance.instanceId,
-    lyricsVisible:
-      segment.index === 0
-      || settled
-      || elapsed >= LYRIC_SETTLE_SECONDS
-      || (segment.index > 0 && elapsed >= CAMERA_FLIGHT_SECONDS),
+    lyricsVisible: segment.index === 0 || settled || elapsed >= LYRIC_SETTLE_SECONDS,
     localSeconds: time.localSeconds,
   };
 }
