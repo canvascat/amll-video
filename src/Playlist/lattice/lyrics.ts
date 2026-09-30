@@ -19,9 +19,18 @@ export function lyricLineAt(lines: readonly LyricLine[], timeMs: number): LyricL
   return lines.find((line) => timeMs >= line.startTime && timeMs < line.endTime) ?? null;
 }
 
+type GraphemeSegmenter = {
+  segment: (input: string) => Iterable<{ segment: string }>;
+};
+type GraphemeSegmenterConstructor = new (
+  locales?: string,
+  options?: { granularity: "grapheme" },
+) => GraphemeSegmenter;
+
 function graphemes(text: string): string[] {
   if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
-    return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)].map((part) => part.segment);
+    const Segmenter = (Intl as typeof Intl & { Segmenter: GraphemeSegmenterConstructor }).Segmenter;
+    return [...new Segmenter(undefined, { granularity: "grapheme" }).segment(text)].map((part) => part.segment);
   }
   return [...text];
 }

@@ -27,7 +27,7 @@ export const PlaylistPlayer: React.FC<PlaylistCompositionProps> = ({ tracks }) =
         if (!track) return null;
         const audioOffsetInFrames = Math.round(track.audioOffsetInSeconds * fps);
         return (
-          <Sequence key={span.index} from={span.startFrame} durationInFrames={span.durationInFrames} showPosterWhenEnded={false}>
+          <Sequence key={span.index} from={span.startFrame} durationInFrames={span.durationInFrames}>
             {isRendering ? null : (
               <Sequence from={-audioOffsetInFrames}>
                 <Audio src={resolvePublicAsset(track.audioFileUrl)} />
