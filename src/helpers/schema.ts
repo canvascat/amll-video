@@ -49,3 +49,11 @@ export type AlbumCompositionProps = {
   tracks: AlbumTrackProps[];
   cueStills?: boolean;
 };
+
+export const playlistCompositionSchema = z.object({
+  tracks: z.array(trackSchema).min(1),
+});
+
+export type PlaylistCompositionProps = {
+  tracks: TrackProps[];
+};
