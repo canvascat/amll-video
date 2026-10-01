@@ -6,7 +6,7 @@
 - `AlbumPlayer`：一张整轨。毛玻璃封面，按时间切歌名，不滚动歌词。
 - `PlaylistPlayer`：一份歌单。海报墙铺开，当前这首展开并显示当前句歌词和波形，切歌时镜头飞到下一张。
 
-成片走导出 CLI：先做出无声画面，再用 ffmpeg 把原音轨无损 mux 进 MKV。歌单画面目前只在 Studio 里预览。
+成片走导出 CLI：先做出无声画面，再用 ffmpeg 把原音轨无损 mux 进 MKV。歌单画面可以直接从网易云歌单链接导出，见下面的「网易云歌单」。
 
 ## 准备
 
@@ -29,6 +29,45 @@ nub run _prepare -- --audio <音频或CUE>
 ```
 
 预览和导出都只需要这份配置文件。整轨也可以跳过备料，把 `.cue` 直接交给导出。
+
+## 网易云歌单
+
+```console
+nub run export -- "<歌单链接、分享文本或歌单ID>"
+```
+
+前提：本机已启动 `music-dl web` 并登录网易云（默认 `http://127.0.0.1:8080/music`，可用 `--server` 或环境变量 `MUSIC_DL_URL` 改）。`163cn.tv` 短链和整段分享文本都能直接传。
+
+流程：
+
+```text
+歌单链接
+    → 从 music-dl web 读出曲目（个性化推荐歌单的曲目随登录账号变化）
+    → 逐首下载到 tmp/mdl/<歌单ID>/，内嵌封面和歌词；已有的跳过
+    → 按歌曲 ID 取网易云歌词，整理封面，写出 tmp/mdl/<歌单ID>/export.json
+    → PlaylistPlayer 渲染无声画面，每首裁到整帧后拼接原音轨
+    → out/<歌单名>.mkv
+```
+
+- **歌词**：只用网易云，逐字（YRC）优先，没有逐字再用整行 LRC。
+- **纯音乐**：网易云标记为纯音乐或没有歌词的歌不会去别处搜歌词，画面里只显示封面、歌名和波形。
+- **目录**：`playlist.json` 记录歌单信息和每首歌的下载状态；`export.json` 是交给导出的配置，可手动改某首歌的 `lyricOffsetMs`。
+- **失败**：下载失败的歌会从成片里跳过并列出，重跑同一条命令会补下载。
+
+只想下载并整理素材、不渲染：
+
+```console
+nub run export -- "<歌单链接>" --prepare-only
+```
+
+之后可以直接用整理好的配置导出或预览：
+
+```console
+nub run export -- tmp/mdl/<歌单ID>/export.json --playlist
+nub run export -- tmp/mdl/<歌单ID>/export.json --playlist --preview
+```
+
+重新下载并重新整理歌词，加 `--refresh`。
 
 ## 预览
 
@@ -68,6 +107,10 @@ nub src/export/cli.ts --config <配置.json>
 | `--preview` | 打开 Studio，不导出 |
 | `--background` | AMLLPlayer 背景：`slow`（默认，一半速度）、`static`（静止）、`normal`（原来的速度）。专辑会忽略 |
 | `--album` | 用 `AlbumPlayer`。直接传入 `.cue` 时自动开启，不需要歌词 |
+| `--playlist` | 用 `PlaylistPlayer` 导出网易云歌单。传入歌单链接或 ID 时自动开启；传 `export.json` 时需要显式加上 |
+| `--server` | music-dl web 地址，只用于歌单下载 |
+| `--refresh` | 重新下载并重新整理歌单素材，默认复用 `tmp/mdl/<歌单ID>` 里已有的 |
+| `--prepare-only` | 只下载并整理歌单素材、写出 `export.json`，不渲染 |
 | `--srt` | 只为整轨 `.cue` 写出字幕：按曲目起点拼接，不写入偏移，并在终端列出疑似偏移。默认写在 cue 旁边的同名 `.srt` |
 | `-h` | 打印帮助 |
 
@@ -107,6 +150,10 @@ nub src/export/cli.ts --config <配置.json>
 - `src/export/render.ts`：Studio 预览 / Remotion 渲染 / 专辑静帧
 - `src/export/mux.ts`：ffmpeg 合成
 - `src/export/album-srt.ts`：整轨字幕
+- `src/export/netease-playlist.ts`：解析歌单链接、读曲目、经 music-dl web 下载
+- `src/export/netease-lyrics.ts`：按歌曲 ID 取网易云歌词（逐字优先，识别纯音乐）
+- `src/export/playlist-materials.ts`：整理每首歌的歌词、封面，写出 `export.json`
+- `src/export/playlist-pipeline.ts`：歌单链接到 `export.json` 的整条流程
 - `src/Player/`：单曲画面
 - `src/Album/`：整轨画面
 - `src/Playlist/`：歌单海报墙

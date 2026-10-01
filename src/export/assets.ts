@@ -1,11 +1,17 @@
 import type { LyricLine } from "@applemusic-like-lyrics/core";
 import { copyFile, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { detectLyricFormat, parseLyricText } from "../helpers/lyrics";
+import { stripLyricMetadata } from "../helpers/lyric-metadata";
+import {
+  detectLyricFormat,
+  parseLyricText,
+  shiftLyricLines,
+} from "../helpers/lyrics";
 import type {
   AlbumCompositionProps,
   AlbumTrackProps,
   PlayerCompositionProps,
+  PlaylistCompositionProps,
   TrackProps,
 } from "../helpers/schema";
 import { albumSpanInFrames, trackDurationInFrames } from "../helpers/track-duration";
@@ -26,7 +32,10 @@ export type ExportJob = {
   durationInFrames: number;
   sourceAudios: ConcatAudioInput[];
   title: string;
-  inputProps: PlayerCompositionProps | AlbumCompositionProps;
+  inputProps:
+    | PlayerCompositionProps
+    | AlbumCompositionProps
+    | PlaylistCompositionProps;
 };
 
 function jsonSafeTime(value: number): number {
@@ -264,9 +273,74 @@ async function prepareCueExportJob(args: ExportArgs): Promise<ExportJob> {
   };
 }
 
+/**
+ * 歌单：每首歌自带封面和歌词，用 PlaylistPlayer 画海报墙。
+ * 没有歌词的曲目（纯音乐）歌词留空，画面里只显示封面和歌名。
+ */
+async function preparePlaylistExportJob(args: ExportArgs): Promise<ExportJob> {
+  if (!args.config) {
+    throw new Error("需要歌单配置文件");
+  }
+  if (args.background) {
+    console.log("歌单画面没有动态背景，已忽略 --background");
+  }
+  const loaded = await loadPreparedConfig(args.config, { lyrics: true });
+  const publicDir = await mkdtemp(
+    path.join(await ensureProjectTmpDir(), "rmv-export-"),
+  );
+  const cache = createAssetCache();
+  const materialized: MaterializedTrack[] = [];
+  for (const [index, track] of loaded.tracks.entries()) {
+    materialized.push(
+      await materializeTrack({
+        index,
+        track,
+        publicDir,
+        fps: args.fps,
+        cache,
+      }),
+    );
+  }
+
+  // PlaylistPlayer 对已带歌词的曲目不会再处理偏移和署名行，这里先按 Studio 里的结果处理好
+  const tracks: TrackProps[] = materialized.map(({ track }) => ({
+    ...track,
+    lyricOffsetMs: 0,
+    lyricLines: stripLyricMetadata(
+      shiftLyricLines(track.lyricLines ?? [], track.lyricOffsetMs ?? 0),
+      { title: track.songName, artists: track.artistName },
+    ),
+  }));
+
+  // 画面按整帧切歌（向下取整），音轨也裁到同样的帧数，避免几十首累积出音画错位
+  const sourceAudios: ConcatAudioInput[] = materialized.map((item) => ({
+    path: item.sourceAudio.path,
+    offsetInSeconds: item.sourceAudio.offsetInSeconds,
+    durationInSeconds:
+      item.sourceAudio.offsetInSeconds + item.durationInFrames / args.fps,
+  }));
+
+  return {
+    publicDir,
+    ownsPublicDir: true,
+    title: loaded.title,
+    fps: args.fps,
+    durationInFrames: Math.max(
+      1,
+      materialized.reduce((sum, item) => sum + item.durationInFrames, 0),
+    ),
+    outputPath: losslessOutputPath(args.out ?? defaultOutputPath(loaded.title)),
+    sourceAudios,
+    inputProps: { tracks },
+  };
+}
+
 export async function prepareExportJob(args: ExportArgs): Promise<ExportJob> {
   if (!args.config) {
     throw new Error("需要配置文件");
+  }
+  if (args.playlist) {
+    return preparePlaylistExportJob(args);
   }
   if (isCuePath(args.config)) {
     return prepareCueExportJob(args);

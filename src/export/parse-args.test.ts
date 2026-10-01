@@ -66,3 +66,45 @@ test("无效并行路数会报错", () => {
     UsageError,
   );
 });
+
+test("传入网易云歌单链接或 ID 时自动走歌单模式", () => {
+  const byLink = parseExportArgs(["https://163cn.tv/bhAEMyxc"]);
+  assert.equal(byLink.playlist, true);
+  assert.equal(byLink.album, false);
+  assert.equal(parseExportArgs(["8408326201"]).playlist, true);
+  assert.equal(parseExportArgs(["song.json"]).playlist, false);
+});
+
+test("export.json 需要 --playlist 才走歌单画面", () => {
+  const args = parseExportArgs(["tmp/mdl/8408326201/export.json", "--playlist"]);
+  assert.equal(args.playlist, true);
+  assert.equal(args.album, false);
+});
+
+test("歌单模式不能和 --album、.cue 混用", () => {
+  assert.throws(
+    () => parseExportArgs(["8408326201", "--album"]),
+    UsageError,
+  );
+  assert.throws(
+    () => parseExportArgs(["a.cue", "--playlist"]),
+    UsageError,
+  );
+});
+
+test("--server / --refresh / --prepare-only 只用于歌单", () => {
+  assert.throws(
+    () => parseExportArgs(["song.json", "--prepare-only"]),
+    UsageError,
+  );
+  const args = parseExportArgs([
+    "8408326201",
+    "--server",
+    "http://127.0.0.1:9000/music",
+    "--refresh",
+    "--prepare-only",
+  ]);
+  assert.equal(args.server, "http://127.0.0.1:9000/music");
+  assert.equal(args.refresh, true);
+  assert.equal(args.prepareOnly, true);
+});
