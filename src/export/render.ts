@@ -5,7 +5,11 @@ import path from "node:path";
 import type { AlbumCompositionProps } from "../helpers/schema";
 import { trackPlayableSeconds } from "../helpers/track-duration";
 import { applyProjectTmp, withProjectTmpEnv } from "../lib/project-tmp";
-import { ALBUM_COMPOSITION_ID, COMPOSITION_ID } from "../remotion/constants";
+import {
+  ALBUM_COMPOSITION_ID,
+  COMPOSITION_ID,
+  PLAYLIST_COMPOSITION_ID,
+} from "../remotion/constants";
 import { ensureOutputDir, prepareExportJob, type ExportJob } from "./assets";
 import {
   albumChaptersFromTracks,
@@ -110,6 +114,14 @@ export async function previewStudio(args: ExportArgs): Promise<void> {
   await writeFile(propsPath, JSON.stringify(job.inputProps));
 
   console.log(`正在启动 Remotion Studio 预览：《${job.title}》`);
+  const compositionId = args.playlist
+    ? PLAYLIST_COMPOSITION_ID
+    : args.album
+      ? ALBUM_COMPOSITION_ID
+      : COMPOSITION_ID;
+  console.log(
+    `Studio 默认先打开第一个画面，请在左侧选择 ${compositionId}（或直接访问 /${compositionId}）`,
+  );
 
   try {
     await runRemotion(
@@ -129,7 +141,7 @@ export async function previewStudio(args: ExportArgs): Promise<void> {
 }
 
 function albumInputProps(job: ExportJob): AlbumCompositionProps {
-  if (!("tracks" in job.inputProps)) {
+  if (!("tracks" in job.inputProps) || !("audioFileUrl" in job.inputProps)) {
     throw new Error("专辑导出需要曲目列表");
   }
   return job.inputProps;
@@ -227,6 +239,16 @@ export async function exportVideo(args: ExportArgs): Promise<string> {
   const silentVideoPath = path.join(workDir, "video-only.mp4");
   const propsPath = path.join(workDir, "input-props.json");
   const useAlbumStills = Boolean(args.album) && !args.frames;
+  const compositionId = args.playlist
+    ? PLAYLIST_COMPOSITION_ID
+    : args.album
+      ? ALBUM_COMPOSITION_ID
+      : COMPOSITION_ID;
+  const compositionLabel = args.playlist
+    ? "PlaylistPlayer"
+    : args.album
+      ? "AlbumPlayer"
+      : "AMLLPlayer";
 
   try {
     if (useAlbumStills) {
@@ -240,14 +262,14 @@ export async function exportVideo(args: ExportArgs): Promise<string> {
     } else {
       await writeFile(propsPath, JSON.stringify(job.inputProps));
       console.log(
-        `正在渲染无声画面：《${trackLabel(job)}》（${job.durationInFrames} 帧，${args.album ? "AlbumPlayer" : "AMLLPlayer"}，concurrency=${args.concurrency}）`,
+        `正在渲染无声画面：《${trackLabel(job)}》（${job.durationInFrames} 帧，${compositionLabel}，concurrency=${args.concurrency}）`,
       );
       await runRemotion(
         remotionCommonArgs({
           job,
           args,
           outputPath: silentVideoPath,
-          compositionId: args.album ? ALBUM_COMPOSITION_ID : COMPOSITION_ID,
+          compositionId,
           propsPath,
         }),
         tmpDir,

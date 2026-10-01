@@ -1,11 +1,19 @@
 import path from "node:path";
 import { writeAlbumSrt, formatSuspectedOffsets } from "./album-srt";
 import { parseExportArgs, UsageError } from "./parse-args";
+import { prepareNeteasePlaylist } from "./playlist-pipeline";
 import { exportVideo, previewStudio } from "./render";
 
 async function main() {
   try {
-    const args = parseExportArgs(process.argv.slice(2));
+    let args = parseExportArgs(process.argv.slice(2));
+    if (args.playlist) {
+      const config = await prepareNeteasePlaylist(args);
+      if (args.prepareOnly) {
+        return;
+      }
+      args = { ...args, config };
+    }
     if (args.srt) {
       if (!args.config || path.extname(args.config).toLowerCase() !== ".cue") {
         throw new UsageError("字幕只接受整轨 .cue");

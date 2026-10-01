@@ -6,6 +6,12 @@ import {
 } from "../Player/background-motion";
 import { DEFAULT_FPS } from "../remotion/constants";
 
+/** 歌单链接、分享文本或纯数字 ID，而不是本地文件路径。 */
+export function looksLikePlaylistRef(input: string): boolean {
+  const text = input.trim();
+  return /^\d+$/.test(text) || /https?:\/\//i.test(text);
+}
+
 export class UsageError extends Error {
   readonly exitCode: number;
 
@@ -26,6 +32,14 @@ export type ExportArgs = {
   album?: boolean;
   srt?: boolean;
   background?: BackgroundMotion;
+  /** 网易云歌单：config 是歌单链接 / ID（先下载再导出），或下载后生成的 export.json。 */
+  playlist?: boolean;
+  /** music-dl web 地址，只用于下载网易云歌单。 */
+  server?: string;
+  /** 重新下载并重新整理素材，而不是复用 tmp/mdl/<歌单ID> 里已有的。 */
+  refresh?: boolean;
+  /** 只下载并整理素材、写出 export.json，不渲染。 */
+  prepareOnly?: boolean;
 };
 
 export const USAGE = `用法: nub run export -- <配置.json> [选项]
@@ -34,6 +48,10 @@ export const USAGE = `用法: nub run export -- <配置.json> [选项]
 json 相对配置文件所在目录解析音频 / 歌词 / 封面。
 .cue 自动走专辑模式：同一音频、同一封面，曲目只有起止时间，不需要歌词。
 不带 --album 时，json 只接受单曲；多首整轨请加 --album，或直接传入 .cue。
+
+网易云歌单：传入歌单链接、分享文本或歌单 ID（或下载后生成的 export.json，需加 --playlist）。
+会先通过本地 music-dl web 下载到 tmp/mdl/<歌单ID>，内嵌封面和歌词；再按歌曲 ID 取逐字歌词
+（AMLL TTML > 网易云 YRC，取不到再联网匹配）；纯音乐不搜歌词；最后用 PlaylistPlayer 导出。
 
 必填:
   --config  配置文件路径（也可直接作为位置参数）
@@ -47,6 +65,10 @@ json 相对配置文件所在目录解析音频 / 歌词 / 封面。
   --background   AMLLPlayer 背景：slow（默认，一半速度）、static（静止）、normal（原来的速度）
   --album        用 AlbumPlayer：毛玻璃封面、整轨一条音频、按时间切歌名。传入 .cue 时自动开启
   --srt          只为整轨 .cue 写出字幕：按曲目起点拼接，不写入偏移，并列出疑似偏移
+  --playlist     用 PlaylistPlayer 导出网易云歌单。传入歌单链接 / ID 时自动开启
+  --server       music-dl web 地址，默认 http://127.0.0.1:8080/music，也可用环境变量 MUSIC_DL_URL
+  --refresh      重新下载并重新整理歌单素材，默认复用 tmp/mdl/<歌单ID> 里已有的
+  --prepare-only 只下载并整理歌单素材、写出 export.json，不渲染
   -h, --help
 
 不传配置并加上 --preview 时，打开 Studio 预览默认曲目。
@@ -64,6 +86,10 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     album?: boolean;
     srt?: boolean;
     background?: string;
+    playlist?: boolean;
+    server?: string;
+    refresh?: boolean;
+    "prepare-only"?: boolean;
     help?: boolean;
   };
   let positionals: string[];
@@ -81,6 +107,10 @@ export function parseExportArgs(argv: string[]): ExportArgs {
         album: { type: "boolean" },
         srt: { type: "boolean" },
         background: { type: "string" },
+        playlist: { type: "boolean" },
+        server: { type: "string" },
+        refresh: { type: "boolean" },
+        "prepare-only": { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
       allowPositionals: true,
@@ -122,6 +152,17 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     }
   }
 
+  const playlist =
+    Boolean(values.playlist) || (config ? looksLikePlaylistRef(config) : false);
+  if (playlist && (values.album || (config && path.extname(config).toLowerCase() === ".cue"))) {
+    throw new UsageError(`--playlist 不能和 --album 或 .cue 一起用\n\n${USAGE}`);
+  }
+  if ((values.refresh || values["prepare-only"] || values.server) && !playlist) {
+    throw new UsageError(
+      `--server / --refresh / --prepare-only 只用于网易云歌单（加 --playlist 或直接传歌单链接）\n\n${USAGE}`,
+    );
+  }
+
   return {
     config,
     out: values.out,
@@ -131,7 +172,14 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     preview: Boolean(values.preview),
     srt: Boolean(values.srt),
     background,
-    album: Boolean(values.album) || (config ? path.extname(config).toLowerCase() === ".cue" : false),
+    album: playlist
+      ? false
+      : Boolean(values.album) ||
+        (config ? path.extname(config).toLowerCase() === ".cue" : false),
+    playlist,
+    server: values.server,
+    refresh: Boolean(values.refresh),
+    prepareOnly: Boolean(values["prepare-only"]),
   };
 }
 
