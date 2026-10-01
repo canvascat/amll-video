@@ -51,7 +51,7 @@ nub run export -- "<歌单链接、分享文本或歌单ID>"
 
 - **歌词**：只用网易云，逐字（YRC）优先，没有逐字再用整行 LRC。
 - **纯音乐**：网易云标记为纯音乐或没有歌词的歌不会去别处搜歌词，画面里只显示封面、歌名和波形。
-- **翻译**：有翻译时只在当前句下面显示小字，按时间配到对应的歌词行。
+- **翻译**：有翻译时只在当前句下面显示小字，按时间配到对应的歌词行。整理出的 `.lrc` / `.yrc` 里，歌词正文后面用 `[rmv-translation]` 带上翻译（一份 LRC），解析时按开始时间（容差 300 ms）挂回对应的歌词行，不会当成独立的歌词行。QRC 还可以用 `[rmv-roman]` 带罗马音。
 - **目录**：`playlist.json` 记录歌单信息和每首歌的下载状态；`export.json` 是交给导出的配置，每次用歌单链接运行都会重写；想调某首歌的 `lyricOffsetMs`，改它之后用 `export.json --playlist` 导出。
 - **失败**：下载失败的歌会从成片里跳过并列出，重跑同一条命令会补下载。
 
@@ -140,7 +140,19 @@ nub src/export/cli.ts --config <配置.json>
     → out/<专辑名>.chapters.txt
 ```
 
-画面由 Remotion 或上面的静帧流程编码；**音轨是原文件 stream copy**（FLAC / WAV 不会被重编码）。整轨多首歌共用同一文件时也只 mux 这一条原音轨。不要用 Studio 的 Render，那会经 Remotion 压缩音频；成片请用上面的导出命令。渲染临时文件写在项目根目录 `tmp/`（已 gitignore），结束后删除。
+歌单（网易云歌单链接，或 `export.json` 加 `--playlist`）：
+
+```text
+歌单链接
+    → music-dl web 读曲目，逐首下载到 tmp/mdl/<歌单ID>/（内嵌封面和歌词）
+    → 按歌曲 ID 取网易云歌词和翻译，整理封面，写出 export.json
+    → 拷到临时 public 目录，生成 PlaylistPlayer props（偏移和署名行在这一步处理好）
+    → Remotion 渲染无声 H.264
+    → 每首音轨裁到与画面相同的整帧数后拼接成一条 FLAC，再合成
+    → out/<歌单名>.mkv
+```
+
+画面由 Remotion 或上面的静帧流程编码；**音轨是原文件 stream copy**（FLAC / WAV 不会被重编码）。整轨多首歌共用同一文件时也只 mux 这一条原音轨。歌单是不同的文件，需要先拼接，拼接时统一为 48 kHz 立体声 FLAC（无损，但不再是逐字节的原文件）。不要用 Studio 的 Render，那会经 Remotion 压缩音频；成片请用上面的导出命令。渲染临时文件写在项目根目录 `tmp/`（已 gitignore），结束后删除。
 
 相关代码：
 
