@@ -67,8 +67,12 @@ export function mapLyric(line: MappableLyricLine): LyricLine {
 const QRC_TRANSLATION_MARK = "[rmv-translation]";
 const QRC_ROMAN_MARK = "[rmv-roman]";
 
-function splitQrcBundle(raw: string): {
-  qrc: string;
+/**
+ * 歌词正文后面可以用 [rmv-translation] / [rmv-roman] 带上翻译和罗马音，按时间挂回对应的歌词行。
+ * QRC 用它带翻译和罗马音；LRC、YRC 只认翻译。
+ */
+function splitLyricBundle(raw: string): {
+  main: string;
   translation: string;
   roman: string;
 } {
@@ -86,7 +90,7 @@ function splitQrcBundle(raw: string): {
     return raw.slice(from, to);
   };
   return {
-    qrc: raw.slice(0, qrcEnd),
+    main: raw.slice(0, qrcEnd),
     translation: sliceMark(QRC_TRANSLATION_MARK, transAt),
     roman: sliceMark(QRC_ROMAN_MARK, romanAt),
   };
@@ -108,15 +112,8 @@ function extractKanaTag(qrc: string): string {
 
 export function parseLyricText(raw: string, format: LyricFormat): LyricLine[] {
   let lines: MappableLyricLine[];
-  let translation = "";
-  let roman = "";
-  let body = raw;
-  if (format === "qrc") {
-    const bundle = splitQrcBundle(raw);
-    body = bundle.qrc;
-    translation = bundle.translation;
-    roman = bundle.roman;
-  }
+  const bundle = splitLyricBundle(raw);
+  const body = bundle.main;
   switch (format) {
     case "lrc":
       lines = parseLrc(body);
@@ -137,14 +134,24 @@ export function parseLyricText(raw: string, format: LyricFormat): LyricLine[] {
       break;
   }
   const parsed = sanitizeLyricTimestamps(lines.map(mapLyric));
-  if (format !== "qrc") {
-    return parsed;
+  if (format === "qrc") {
+    return attachQrcAnnotations(parsed, {
+      translations: parsedLines(bundle.translation, "lrc"),
+      romans: parsedLines(bundle.roman, "qrc"),
+      kana: extractKanaTag(body),
+    });
   }
-  return attachQrcAnnotations(parsed, {
-    translations: parsedLines(translation, "lrc"),
-    romans: parsedLines(roman, "qrc"),
-    kana: extractKanaTag(body),
-  });
+  if (
+    (format === "lrc" || format === "yrc") &&
+    bundle.translation.trim()
+  ) {
+    return attachQrcAnnotations(parsed, {
+      translations: parsedLines(bundle.translation, "lrc"),
+      romans: [],
+      kana: "",
+    });
+  }
+  return parsed;
 }
 
 export function shiftLyricLines(

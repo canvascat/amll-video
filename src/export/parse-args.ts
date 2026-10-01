@@ -36,7 +36,7 @@ export type ExportArgs = {
   playlist?: boolean;
   /** music-dl web 地址，只用于下载网易云歌单。 */
   server?: string;
-  /** 重新下载并重新整理素材，而不是复用 tmp/mdl/<歌单ID> 里已有的。 */
+  /** 重新下载音频，而不是复用 tmp/mdl/<歌单ID> 里已有的。歌词每次都会重新取。 */
   refresh?: boolean;
   /** 只下载并整理素材、写出 export.json，不渲染。 */
   prepareOnly?: boolean;
@@ -67,7 +67,7 @@ json 相对配置文件所在目录解析音频 / 歌词 / 封面。
   --srt          只为整轨 .cue 写出字幕：按曲目起点拼接，不写入偏移，并列出疑似偏移
   --playlist     用 PlaylistPlayer 导出网易云歌单。传入歌单链接 / ID 时自动开启
   --server       music-dl web 地址，默认 http://127.0.0.1:8080/music，也可用环境变量 MUSIC_DL_URL
-  --refresh      重新下载并重新整理歌单素材，默认复用 tmp/mdl/<歌单ID> 里已有的
+  --refresh      重新下载歌单音频，默认复用 tmp/mdl/<歌单ID> 里已有的（歌词每次都会重新取）
   --prepare-only 只下载并整理歌单素材、写出 export.json，不渲染
   -h, --help
 

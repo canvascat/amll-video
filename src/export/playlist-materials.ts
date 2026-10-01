@@ -89,21 +89,35 @@ async function buildLookupResult(
   return { result: base, instrumental: lyric.instrumental };
 }
 
+async function readPrevious(jsonPath: string): Promise<PreparedTrack | null> {
+  if (!existsSync(jsonPath)) return null;
+  try {
+    return JSON.parse(await readFile(jsonPath, "utf8")) as PreparedTrack;
+  } catch {
+    return null;
+  }
+}
+
 async function prepareEntry(
   dir: string,
   entry: PlaylistEntry,
-  force: boolean,
 ): Promise<PreparedEntry | null> {
   if (!entry.file) return null;
   const audioPath = entry.file;
   const jsonPath = path.join(dir, `${fileStem(audioPath)}.json`);
-
-  if (!force && existsSync(jsonPath)) {
-    const prepared = JSON.parse(await readFile(jsonPath, "utf8")) as PreparedTrack;
-    return { entry, prepared, lyric: lyricStateOf(prepared, false) };
-  }
+  const previous = await readPrevious(jsonPath);
 
   const { result, instrumental } = await buildLookupResult(audioPath, entry);
+  // 这次没取到歌词（多半是网络问题）而上次有：保留上次的，别被覆盖掉
+  if (
+    !result.lyric &&
+    !instrumental &&
+    previous?.lyricsFileUrl &&
+    existsSync(path.join(dir, previous.lyricsFileUrl))
+  ) {
+    return { entry, prepared: previous, lyric: lyricStateOf(previous, false) };
+  }
+
   const { prepared } = await writeMaterials({ audioPath, outDir: dir, result });
   return { entry, prepared, lyric: lyricStateOf(prepared, instrumental) };
 }
@@ -112,7 +126,6 @@ async function prepareEntry(
 export async function preparePlaylistMaterials(
   dir: string,
   entries: PlaylistEntry[],
-  force: boolean,
 ): Promise<PreparedEntry[]> {
   const results = new Map<number, PreparedEntry>();
   const ready = entries.filter((entry) => entry.file);
@@ -120,7 +133,7 @@ export async function preparePlaylistMaterials(
   await runPool(ready, PREPARE_CONCURRENCY, async (entry) => {
     const title = `${entry.artist} - ${entry.name}`;
     try {
-      const prepared = await prepareEntry(dir, entry, force);
+      const prepared = await prepareEntry(dir, entry);
       if (!prepared) return;
       results.set(entry.index, prepared);
       console.log(

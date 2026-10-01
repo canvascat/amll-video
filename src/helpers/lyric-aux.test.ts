@@ -44,3 +44,47 @@ test("QRC 的 kana 注音只挂到汉字上", () => {
   assert.equal(lines[1]?.words[8]?.ruby?.[0]?.word, "きょう");
   assert.equal(lines[1]?.words[7]?.ruby, undefined);
 });
+
+const LRC_WITH_TRANSLATION = `[00:01.00]第一句
+[00:05.00]第二句
+[00:09.00]第三句
+[rmv-translation]
+[00:01.00]line one
+[00:05.00]line two
+`;
+
+const YRC_WITH_TRANSLATION = `[1000,2000](1000,1000,0)甲(2000,1000,0)乙
+[5000,2000](5000,1000,0)丙(6000,1000,0)丁
+[rmv-translation]
+[00:01.00]first
+[00:05.00]second
+`;
+
+test("LRC 带翻译时挂到对应的歌词行，不会多出独立的翻译行", () => {
+  const lines = parseLyricText(LRC_WITH_TRANSLATION, "lrc");
+  assert.equal(lines.length, 3);
+  assert.equal(lines[0]?.translatedLyric, "line one");
+  assert.equal(lines[1]?.translatedLyric, "line two");
+  assert.equal(lines[2]?.translatedLyric, "");
+  assert.equal(lines[0]?.words.map((word) => word.word).join(""), "第一句");
+});
+
+test("YRC 逐字歌词带翻译时也挂到对应的歌词行", () => {
+  const lines = parseLyricText(YRC_WITH_TRANSLATION, "yrc");
+  assert.equal(lines.length, 2);
+  assert.equal(lines[0]?.translatedLyric, "first");
+  assert.equal(lines[1]?.translatedLyric, "second");
+  assert.equal(lines[0]?.words.length, 2);
+});
+
+test("没有翻译标记的 LRC 和 YRC 行为不变", () => {
+  assert.equal(
+    parseLyricText("[00:01.00]第一句\n[00:05.00]第二句\n", "lrc").length,
+    2,
+  );
+  assert.equal(
+    parseLyricText("[1000,2000](1000,1000,0)甲(2000,1000,0)乙\n", "yrc")[0]
+      ?.translatedLyric,
+    "",
+  );
+});
