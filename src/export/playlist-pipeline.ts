@@ -75,7 +75,7 @@ export async function prepareNeteasePlaylist(args: ExportArgs): Promise<string> 
     }
   }
 
-  const prepared = await preparePlaylistMaterials(dir, entries, force);
+  const prepared = await preparePlaylistMaterials(dir, entries);
   const configPath = await writePlaylistExportConfig({
     dir,
     playlistId,

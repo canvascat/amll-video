@@ -51,7 +51,8 @@ nub run export -- "<歌单链接、分享文本或歌单ID>"
 
 - **歌词**：只用网易云，逐字（YRC）优先，没有逐字再用整行 LRC。
 - **纯音乐**：网易云标记为纯音乐或没有歌词的歌不会去别处搜歌词，画面里只显示封面、歌名和波形。
-- **目录**：`playlist.json` 记录歌单信息和每首歌的下载状态；`export.json` 是交给导出的配置，可手动改某首歌的 `lyricOffsetMs`。
+- **翻译**：有翻译时只在当前句下面显示小字，按时间配到对应的歌词行。
+- **目录**：`playlist.json` 记录歌单信息和每首歌的下载状态；`export.json` 是交给导出的配置，每次用歌单链接运行都会重写；想调某首歌的 `lyricOffsetMs`，改它之后用 `export.json --playlist` 导出。
 - **失败**：下载失败的歌会从成片里跳过并列出，重跑同一条命令会补下载。
 
 只想下载并整理素材、不渲染：
@@ -67,7 +68,7 @@ nub run export -- tmp/mdl/<歌单ID>/export.json --playlist
 nub run export -- tmp/mdl/<歌单ID>/export.json --playlist --preview
 ```
 
-重新下载并重新整理歌词，加 `--refresh`。
+重新下载音频加 `--refresh`。歌词每次运行都会重新取，不需要它；这次没取到而上次有时，会保留上次的。
 
 ## 预览
 
@@ -109,7 +110,7 @@ nub src/export/cli.ts --config <配置.json>
 | `--album` | 用 `AlbumPlayer`。直接传入 `.cue` 时自动开启，不需要歌词 |
 | `--playlist` | 用 `PlaylistPlayer` 导出网易云歌单。传入歌单链接或 ID 时自动开启；传 `export.json` 时需要显式加上 |
 | `--server` | music-dl web 地址，只用于歌单下载 |
-| `--refresh` | 重新下载并重新整理歌单素材，默认复用 `tmp/mdl/<歌单ID>` 里已有的 |
+| `--refresh` | 重新下载歌单音频，默认复用 `tmp/mdl/<歌单ID>` 里已有的；歌词每次都会重新取 |
 | `--prepare-only` | 只下载并整理歌单素材、写出 `export.json`，不渲染 |
 | `--srt` | 只为整轨 `.cue` 写出字幕：按曲目起点拼接，不写入偏移，并在终端列出疑似偏移。默认写在 cue 旁边的同名 `.srt` |
 | `-h` | 打印帮助 |
