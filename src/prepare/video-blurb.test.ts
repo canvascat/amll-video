@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildVideoBlurb, formatClock, parseCreditLines } from "./video-blurb";
+import {
+  buildVideoBlurb,
+  formatClock,
+  parseCreditLines,
+  repairLegacyChinese,
+} from "./video-blurb";
 
 test("时长按秒四舍五入", () => {
   assert.equal(formatClock(228.64), "3:49");
@@ -17,6 +22,13 @@ test("歌词头里的词曲编曲可以解析", () => {
     { role: "词", name: "方文山" },
     { role: "制作人", name: "周杰伦" },
   ]);
+});
+
+test("Latin-1 读出的 GBK 歌手名还原成汉字", () => {
+  const mojibake = String.fromCharCode(0xd6, 0xdc, 0xbd, 0xdc, 0xc2, 0xd7);
+  assert.equal(repairLegacyChinese(mojibake), "周杰伦");
+  assert.equal(repairLegacyChinese("周杰伦"), "周杰伦");
+  assert.equal(repairLegacyChinese("Jay Chou"), "Jay Chou");
 });
 
 test("标题带歌手歌名和专辑，简介不写偏移", () => {
