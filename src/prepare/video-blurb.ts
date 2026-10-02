@@ -94,11 +94,11 @@ async function collectFacts(audioPath: string, lyricPath?: string) {
   const common = metadata.common;
   const lyricText = lyricPath ? await readFile(lyricPath, "utf8").catch(() => "") : "";
   const ttmlArtists = readTtmlValues(lyricText, "artists");
-  const artists = unique([
-    ...(common.artists ?? []),
-    common.artist ?? "",
-    ...ttmlArtists,
-  ]);
+  const artists = unique(
+    [...(common.artists ?? []), common.artist ?? "", ...ttmlArtists].map(
+      repairLegacyChinese,
+    ),
+  );
   const appleId = readTtmlValues(lyricText, "appleMusicId")[0];
   const qqId = readTtmlValues(lyricText, "qqMusicId")[0];
   const lyricCredits = creditsFromLyric(lyricText, lyricPath);
@@ -262,6 +262,30 @@ function formatReleaseDate(value: string | undefined): string {
     return "";
   }
   return `${Number(match[1])}年${Number(match[2])}月${Number(match[3])}日`;
+}
+
+/** 标签里偶发把 GBK 歌手名按 Latin-1 读出，例如「周杰伦」变成「ÖÜ½ÜÂ×」。已有汉字则不动。 */
+export function repairLegacyChinese(value: string): string {
+  const text = value.trim();
+  if (!text || /[\u3400-\u9fff]/.test(text)) {
+    return text;
+  }
+  const bytes: number[] = [];
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0;
+    if (code > 0xff) {
+      return text;
+    }
+    bytes.push(code);
+  }
+  if (!bytes.some((byte) => byte >= 0x80)) {
+    return text;
+  }
+  const decoded = new TextDecoder("gb18030").decode(Uint8Array.from(bytes));
+  if (/[\u3400-\u9fff]/.test(decoded) && !decoded.includes("\uFFFD")) {
+    return decoded;
+  }
+  return text;
 }
 
 function unique(values: string[]): string[] {
