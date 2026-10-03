@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "biliup": {
+      "source": "biliup/biliup",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "9243f358c5b8dade54800d918befc21646d25759c801a2d88ec6fa9718441745"
+    },
     "remotion-best-practices": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
