@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { LyricLine } from "@applemusic-like-lyrics/core";
-import { parseFlacStreamInfo, toLoudnessEnvelope } from "./audio-info";
+import {
+  formatLabel,
+  infoFromMetadata,
+  toLoudnessEnvelope,
+} from "./audio-info";
 import {
   amplitudeLabel,
   currentLyricIndex,
@@ -114,42 +118,69 @@ test("当前歌词：没开始是 -1，之后是最后一句已开始的", () =>
   assert.equal(currentLyricIndex(entries, 99999), 2);
 });
 
-test("解析 FLAC STREAMINFO：96 kHz / 24 bit / 立体声", () => {
-  const bytes = new Uint8Array(64);
-  bytes.set([0x66, 0x4c, 0x61, 0x43], 0);
-  // 采样率 96000 = 0x17700（20 位），声道 2 → 1（3 位），位深 24 → 23（5 位）
-  const sampleRate = 96000;
-  const packed = (sampleRate << 12) | (1 << 9) | (23 << 4);
-  const base = 4 + 4 + 10;
-  bytes[base] = (packed >>> 24) & 0xff;
-  bytes[base + 1] = (packed >>> 16) & 0xff;
-  bytes[base + 2] = (packed >>> 8) & 0xff;
-  bytes[base + 3] = packed & 0xff;
-  assert.deepEqual(parseFlacStreamInfo(bytes), {
+test("格式名：FLAC、MP3、AAC、WAV 等", () => {
+  assert.equal(formatLabel("FLAC", "FLAC"), "FLAC");
+  assert.equal(formatLabel("MPEG", "MPEG 1 Layer 3"), "MP3");
+  assert.equal(formatLabel("MPEG", "AAC"), "AAC");
+  assert.equal(formatLabel("WAVE", "PCM"), "WAV");
+  assert.equal(formatLabel("Ogg", "Opus"), "OPUS");
+  assert.equal(formatLabel(undefined, undefined), undefined);
+});
+
+test("music-metadata 结果折成面板字段，码率按文件大小和时长算", () => {
+  const { info, tags } = infoFromMetadata(
+    {
+      format: {
+        container: "FLAC",
+        codec: "FLAC",
+        sampleRate: 96000,
+        bitsPerSample: 24,
+        numberOfChannels: 2,
+      },
+      common: {
+        year: 2014,
+        track: { no: 5, of: 12 },
+        genre: ["J-Pop", "Pop"],
+        bpm: 119.6,
+      },
+    } as Parameters<typeof infoFromMetadata>[0],
+    103.1 * 1024 * 1024,
+    302,
+  );
+  assert.deepEqual(info, {
     sampleRate: 96000,
-    channels: 2,
     bitDepth: 24,
+    channels: 2,
+    format: "FLAC",
+    fileSizeBytes: 103.1 * 1024 * 1024,
+    bitrateKbps: 2864,
+  });
+  assert.deepEqual(tags, {
+    year: 2014,
+    trackNumber: 5,
+    genre: "J-Pop",
+    bpm: 120,
   });
 });
 
-test("FLAC 前面有 ID3v2 时跳过；不是 FLAC 返回 null", () => {
-  const id3Size = 20;
-  const bytes = new Uint8Array(10 + id3Size + 40);
-  bytes.set([0x49, 0x44, 0x33, 4, 0, 0, 0, 0, 0, id3Size], 0);
-  const at = 10 + id3Size;
-  bytes.set([0x66, 0x4c, 0x61, 0x43], at);
-  const packed = (44100 << 12) | (1 << 9) | (15 << 4);
-  const base = at + 4 + 4 + 10;
-  bytes[base] = (packed >>> 24) & 0xff;
-  bytes[base + 1] = (packed >>> 16) & 0xff;
-  bytes[base + 2] = (packed >>> 8) & 0xff;
-  bytes[base + 3] = packed & 0xff;
-  assert.deepEqual(parseFlacStreamInfo(bytes), {
-    sampleRate: 44100,
-    channels: 2,
-    bitDepth: 16,
-  });
-  assert.equal(parseFlacStreamInfo(new Uint8Array(64)), null);
+test("标签和大小缺失时字段留空", () => {
+  const { info, tags } = infoFromMetadata(
+    {
+      format: {
+        container: "MPEG",
+        codec: "MPEG 1 Layer 3",
+        sampleRate: 44100,
+        numberOfChannels: 2,
+      },
+      common: { track: { no: null, of: null } },
+    } as Parameters<typeof infoFromMetadata>[0],
+    undefined,
+    200,
+  );
+  assert.equal(info.bitDepth, undefined);
+  assert.equal(info.fileSizeBytes, undefined);
+  assert.equal(info.bitrateKbps, undefined);
+  assert.deepEqual(tags, {});
 });
 
 test("响度包络按最大值归一，空桶为 0", () => {

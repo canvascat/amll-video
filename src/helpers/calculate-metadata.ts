@@ -147,7 +147,7 @@ export const calculateSpectraMetadata: CalculateMetadataFunction<
     track.audioEndInSeconds,
   );
 
-  let { audioInfo, year, trackNumber, genre } = props;
+  let { audioInfo, year, trackNumber, genre, bpm } = props;
   // 技术参数缺项（或还没有包络）时，从音频文件本身读取；读不到就留空，界面显示 “—”
   if (!audioInfo?.peaks?.length) {
     const loaded = await loadSpectraAudioInfo(
@@ -163,6 +163,7 @@ export const calculateSpectraMetadata: CalculateMetadataFunction<
       year = year ?? loaded.tags.year;
       trackNumber = trackNumber ?? loaded.tags.trackNumber;
       genre = genre ?? loaded.tags.genre;
+      bpm = bpm ?? loaded.tags.bpm;
     }
   }
 
@@ -174,6 +175,6 @@ export const calculateSpectraMetadata: CalculateMetadataFunction<
   return {
     fps: DEFAULT_FPS,
     durationInFrames: Math.max(1, durationInFrames),
-    props: { ...props, ...track, audioInfo, year, trackNumber, genre, theme },
+    props: { ...props, ...track, audioInfo, year, trackNumber, genre, bpm, theme },
   };
 };

@@ -1,3 +1,5 @@
+import FFT from "fft.js";
+
 /** 频谱用到的纯计算：加窗 FFT、对数频带、dBFS 换算。不依赖 React，方便单测。 */
 
 export const FFT_SIZE = 8192;
@@ -6,11 +8,10 @@ export const DB_CEIL = 0;
 export const SPECTRUM_MIN_HZ = 20;
 
 type FftPlan = {
-  size: number;
-  reverse: Uint32Array;
-  cos: Float64Array;
-  sin: Float64Array;
+  fft: FFT;
   window: Float64Array;
+  input: number[];
+  output: number[];
 };
 
 const plans = new Map<number, FftPlan>();
@@ -18,37 +19,24 @@ const plans = new Map<number, FftPlan>();
 function planFor(size: number): FftPlan {
   const cached = plans.get(size);
   if (cached) return cached;
-  if (size < 2 || (size & (size - 1)) !== 0) {
-    throw new Error(`FFT 点数必须是 2 的幂: ${size}`);
-  }
-  const bits = Math.log2(size);
-  const reverse = new Uint32Array(size);
-  for (let i = 0; i < size; i += 1) {
-    let value = i;
-    let out = 0;
-    for (let bit = 0; bit < bits; bit += 1) {
-      out = (out << 1) | (value & 1);
-      value >>= 1;
-    }
-    reverse[i] = out;
-  }
-  const cos = new Float64Array(size / 2);
-  const sin = new Float64Array(size / 2);
-  for (let i = 0; i < size / 2; i += 1) {
-    cos[i] = Math.cos((2 * Math.PI * i) / size);
-    sin[i] = -Math.sin((2 * Math.PI * i) / size);
-  }
+  // fft.js 要求点数是 2 的幂，不满足时它自己会抛错
+  const fft = new FFT(size);
   const window = new Float64Array(size);
   for (let i = 0; i < size; i += 1) {
     window[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / size);
   }
-  const plan = { size, reverse, cos, sin, window };
+  const plan = {
+    fft,
+    window,
+    input: Array.from({ length: size }, () => 0),
+    output: fft.createComplexArray() as number[],
+  };
   plans.set(size, plan);
   return plan;
 }
 
 /**
- * 对 samples 里从 start 起的 size 个采样做 Hann 加窗 FFT，返回 size/2 个幅度。
+ * 对 samples 里从 start 起的 size 个采样做 Hann 加窗 FFT（FFT 本身用 fft.js），返回 size/2 个幅度。
  * 幅度按满刻度正弦 = 1.0 校准，所以 20·log10(幅度) 就是 dBFS。
  * start 越界的部分补 0。
  */
@@ -58,37 +46,23 @@ export function fftAmplitudes(
   size = FFT_SIZE,
 ): Float32Array {
   const plan = planFor(size);
-  const re = new Float64Array(size);
-  const im = new Float64Array(size);
   for (let i = 0; i < size; i += 1) {
     const index = start + i;
     const sample =
       index >= 0 && index < samples.length ? (samples[index] ?? 0) : 0;
-    re[plan.reverse[i] as number] = sample * (plan.window[i] as number);
+    plan.input[i] = sample * (plan.window[i] as number);
   }
-  for (let half = 1; half < size; half <<= 1) {
-    const step = size / (half << 1);
-    for (let block = 0; block < size; block += half << 1) {
-      for (let k = 0; k < half; k += 1) {
-        const wr = plan.cos[k * step] as number;
-        const wi = plan.sin[k * step] as number;
-        const a = block + k;
-        const b = a + half;
-        const tr = re[b]! * wr - im[b]! * wi;
-        const ti = re[b]! * wi + im[b]! * wr;
-        re[b] = re[a]! - tr;
-        im[b] = im[a]! - ti;
-        re[a] = re[a]! + tr;
-        im[a] = im[a]! + ti;
-      }
-    }
-  }
+  plan.fft.realTransform(plan.output, plan.input);
   const bins = size / 2;
   const out = new Float32Array(bins);
   // Hann 窗的相干增益是 0.5，单边谱再乘 2：幅度 = |X| · 2 / (N · 0.5)
   const scale = 4 / size;
   for (let i = 0; i < bins; i += 1) {
-    out[i] = Math.hypot(re[i]!, im[i]!) * scale;
+    out[i] =
+      Math.hypot(
+        plan.output[2 * i] as number,
+        plan.output[2 * i + 1] as number,
+      ) * scale;
   }
   return out;
 }

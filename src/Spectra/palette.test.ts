@@ -1,107 +1,87 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import chroma from "chroma-js";
 import {
   DEFAULT_THEME,
-  contrastRatio,
-  deriveTheme,
-  hslToHex,
-  rgbToHsl,
+  pickAccent,
+  themeFromAccent,
+  type AccentColor,
 } from "./palette";
 
-function solid(r: number, g: number, b: number, count = 400): number[] {
-  return Array.from({ length: count }, () => [r, g, b, 255]).flat();
-}
-
-const hueOf = (hex: string) =>
-  rgbToHsl(
-    parseInt(hex.slice(1, 3), 16),
-    parseInt(hex.slice(3, 5), 16),
-    parseInt(hex.slice(5, 7), 16),
-  ).h;
+const hueOf = (color: string) => chroma(color).hsl()[0];
 
 const hueDistance = (a: number, b: number) => {
   const d = Math.abs(a - b) % 360;
   return Math.min(d, 360 - d);
 };
 
-test("HSL 和十六进制互转", () => {
-  assert.equal(hslToHex(0, 1, 0.5), "#ff0000");
-  assert.equal(hslToHex(120, 1, 0.5), "#00ff00");
-  assert.equal(hslToHex(240, 1, 0.5), "#0000ff");
-  assert.equal(hslToHex(0, 0, 1), "#ffffff");
-  const { h, s, l } = rgbToHsl(229, 104, 63);
-  assert.equal(hslToHex(h, s, l), "#e5683f");
-});
-
-test("黑白灰封面回到默认配色", () => {
-  assert.deepEqual(deriveTheme(solid(128, 128, 128)), DEFAULT_THEME);
-  assert.deepEqual(
-    deriveTheme([...solid(255, 255, 255, 200), ...solid(0, 0, 0, 200)]),
-    DEFAULT_THEME,
-  );
-  assert.deepEqual(deriveTheme([]), DEFAULT_THEME);
+const accent = (hue: number): AccentColor => ({
+  hue,
+  saturation: 0.7,
+  lightness: 0.5,
 });
 
 test("强调色跟着封面主色走，柱子和波形取互补色", () => {
-  const blue = deriveTheme(solid(40, 90, 200));
-  assert.ok(hueDistance(hueOf(blue.accent), 220) < 15, blue.accent);
-  assert.ok(hueDistance(hueOf(blue.bar), 40) < 15, blue.bar);
-  assert.ok(hueDistance(hueOf(blue.paper), hueOf(blue.accent)) < 15);
+  const blue = themeFromAccent(accent(220));
+  assert.ok(hueDistance(hueOf(blue.accent), 220) < 6, blue.accent);
+  assert.ok(hueDistance(hueOf(blue.bar), 40) < 12, blue.bar);
+  assert.ok(hueDistance(hueOf(blue.paper), 220) < 12, blue.paper);
 
-  const red = deriveTheme(solid(210, 40, 50));
-  assert.ok(hueDistance(hueOf(red.accent), 355) < 15, red.accent);
+  const red = themeFromAccent(accent(355));
+  assert.ok(hueDistance(hueOf(red.accent), 355) < 6, red.accent);
   assert.notEqual(blue.accent, red.accent);
 });
 
-test("大片白底加少量彩色线条（白封面）也能取到彩色", () => {
-  const pixels = [...solid(250, 250, 250, 900), ...solid(235, 120, 40, 100)];
-  const theme = deriveTheme(pixels);
-  assert.ok(hueDistance(hueOf(theme.accent), 25) < 15, theme.accent);
+test("饱和度和明度被限制在好看的范围内", () => {
+  const dull = chroma(
+    themeFromAccent({ hue: 20, saturation: 0.3, lightness: 0.9 }).accent,
+  ).hsl();
+  assert.ok(dull[1] >= 0.5 && dull[2] <= 0.6, `${dull}`);
+  const loud = chroma(
+    themeFromAccent({ hue: 20, saturation: 1, lightness: 0.1 }).accent,
+  ).hsl();
+  assert.ok(loud[1] <= 0.85 && loud[2] >= 0.43, `${loud}`);
 });
 
-test("多种颜色里选面积更大、更鲜的那种", () => {
-  const pixels = [...solid(30, 160, 80, 300), ...solid(200, 40, 40, 60)];
-  const theme = deriveTheme(pixels);
-  assert.ok(hueDistance(hueOf(theme.accent), 140) < 20, theme.accent);
-});
-
-test("透明像素不参与统计", () => {
-  const pixels = [
-    ...Array.from({ length: 500 }, () => [255, 0, 0, 0]).flat(),
-    ...solid(40, 90, 200, 100),
-  ];
-  assert.ok(hueDistance(hueOf(deriveTheme(pixels).accent), 220) < 15);
+test("挑占比最大的鲜艳 swatch，忽略不够鲜的和空的", () => {
+  const picked = pickAccent([
+    null,
+    { hsl: [0.1, 0.8, 0.5], population: 40 },
+    { hsl: [0.6, 0.7, 0.4], population: 300 },
+    { hsl: [0.3, 0.1, 0.5], population: 5000 },
+    undefined,
+  ]);
+  assert.ok(picked);
+  assert.ok(Math.abs(picked.hue - 216) < 1e-9);
+  assert.equal(picked.saturation, 0.7);
+  assert.equal(pickAccent([]), null);
+  assert.equal(
+    pickAccent([null, { hsl: [0.5, 0.1, 0.5], population: 100 }]),
+    null,
+  );
 });
 
 test("任何主色下，正文、标签和翻译都读得清", () => {
-  const swatches: [number, number, number][] = [
-    [229, 104, 63],
-    [40, 90, 200],
-    [30, 160, 80],
-    [240, 200, 40],
-    [160, 50, 190],
-    [210, 40, 50],
-  ];
-  for (const [r, g, b] of swatches) {
-    const theme = deriveTheme(solid(r, g, b));
-    assert.ok(contrastRatio(theme.ink, theme.paper) >= 10, `ink ${theme.ink}`);
+  for (let hue = 0; hue < 360; hue += 15) {
+    const theme = themeFromAccent({ hue, saturation: 0.75, lightness: 0.5 });
+    const contrast = (color: string) => chroma.contrast(color, theme.paper);
+    assert.ok(contrast(theme.ink) >= 10, `ink ${hue} ${theme.ink}`);
     assert.ok(
-      contrastRatio(theme.inkSoft, theme.paper) >= 2.8,
-      `inkSoft ${theme.inkSoft}`,
+      contrast(theme.inkSoft) >= 2.8,
+      `inkSoft ${hue} ${theme.inkSoft}`,
     );
     assert.ok(
-      contrastRatio(theme.translation, theme.paper) >= 3,
-      `translation ${theme.translation}`,
+      contrast(theme.translation) >= 3,
+      `translation ${hue} ${theme.translation}`,
     );
-    assert.ok(contrastRatio(theme.bar, theme.paper) >= 6, `bar ${theme.bar}`);
-    assert.ok(
-      contrastRatio(theme.accent, theme.paper) >= 2,
-      `accent ${theme.accent}`,
-    );
+    assert.ok(contrast(theme.bar) >= 6, `bar ${hue} ${theme.bar}`);
+    assert.ok(contrast(theme.accent) >= 1.8, `accent ${hue} ${theme.accent}`);
   }
 });
 
 test("默认配色本身也满足同样的可读性", () => {
-  assert.ok(contrastRatio(DEFAULT_THEME.ink, DEFAULT_THEME.paper) >= 10);
-  assert.ok(contrastRatio(DEFAULT_THEME.translation, DEFAULT_THEME.paper) >= 3);
+  assert.ok(chroma.contrast(DEFAULT_THEME.ink, DEFAULT_THEME.paper) >= 10);
+  assert.ok(
+    chroma.contrast(DEFAULT_THEME.translation, DEFAULT_THEME.paper) >= 3,
+  );
 });

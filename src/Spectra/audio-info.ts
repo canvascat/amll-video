@@ -1,10 +1,5 @@
-import {
-  ALL_FORMATS,
-  AudioBufferSink,
-  Input,
-  UrlSource,
-  type AudioCodec,
-} from "mediabunny";
+import { ALL_FORMATS, AudioBufferSink, Input, UrlSource } from "mediabunny";
+import { parseWebStream, type IAudioMetadata } from "music-metadata";
 
 /** 底部技术参数条和时间轴用到的音频信息。取不到的字段留空，界面显示 “—”。 */
 export type SpectraAudioInfo = {
@@ -22,126 +17,70 @@ export type SpectraTags = {
   year?: number;
   trackNumber?: number;
   genre?: string;
+  bpm?: number;
 };
 
 export const TIMELINE_BAR_COUNT = 300;
 
-export function parseFlacStreamInfo(
-  bytes: Uint8Array,
-): { sampleRate: number; channels: number; bitDepth: number } | null {
-  let offset = 0;
-  if (
-    bytes[0] === 0x49 &&
-    bytes[1] === 0x44 &&
-    bytes[2] === 0x33 &&
-    bytes.length >= 10
-  ) {
-    // ID3v2：10 字节头 + 4×7 位的同步安全长度
-    const size =
-      ((bytes[6] as number) << 21) |
-      ((bytes[7] as number) << 14) |
-      ((bytes[8] as number) << 7) |
-      (bytes[9] as number);
-    offset = 10 + size;
-  }
-  const magic = String.fromCharCode(
-    bytes[offset] ?? 0,
-    bytes[offset + 1] ?? 0,
-    bytes[offset + 2] ?? 0,
-    bytes[offset + 3] ?? 0,
-  );
-  if (magic !== "fLaC" || bytes.length < offset + 8 + 14) return null;
-  // 4 字节块头之后依次是 16+16+24+24 位，共 10 字节，再往后是采样率 / 声道 / 位深
-  const base = offset + 8 + 10;
-  const b0 = bytes[base] as number;
-  const b1 = bytes[base + 1] as number;
-  const b2 = bytes[base + 2] as number;
-  const b3 = bytes[base + 3] as number;
-  return {
-    sampleRate: (b0 << 12) | (b1 << 4) | (b2 >> 4),
-    channels: ((b2 >> 1) & 0x7) + 1,
-    bitDepth: (((b2 & 0x1) << 4) | (b3 >> 4)) + 1,
-  };
-}
-
-export function pcmBitDepth(codec: AudioCodec | null): number | undefined {
-  switch (codec) {
-    case "pcm-s8":
-    case "pcm-u8":
-    case "ulaw":
-    case "alaw":
-      return 8;
-    case "pcm-s16":
-    case "pcm-s16be":
-      return 16;
-    case "pcm-s24":
-    case "pcm-s24be":
-      return 24;
-    case "pcm-s32":
-    case "pcm-s32be":
-    case "pcm-f32":
-    case "pcm-f32be":
-      return 32;
-    case "pcm-f64":
-    case "pcm-f64be":
-      return 64;
-    default:
-      return undefined;
-  }
-}
-
-export function formatName(
-  inputFormat: string,
-  codec: AudioCodec | null,
+/** music-metadata 的容器名 / 编码名 → 面板上的格式名。 */
+export function formatLabel(
+  container: string | undefined,
+  codec: string | undefined,
 ): string | undefined {
-  if (codec === "flac") return "FLAC";
-  if (codec === "mp3") return "MP3";
-  if (codec === "aac") return "AAC";
-  if (codec === "opus") return "OPUS";
-  if (codec === "vorbis") return "VORBIS";
-  if (codec?.startsWith("pcm")) return /wav/i.test(inputFormat) ? "WAV" : "PCM";
-  return inputFormat ? inputFormat.toUpperCase() : undefined;
+  if (codec && /layer\s*3/i.test(codec)) return "MP3";
+  if (codec && /aac/i.test(codec)) return "AAC";
+  if (codec && /opus/i.test(codec)) return "OPUS";
+  if (codec && /vorbis/i.test(codec)) return "VORBIS";
+  if (container && /^wav/i.test(container)) return "WAV";
+  const name = container || codec;
+  return name ? name.toUpperCase() : undefined;
 }
 
-type ProbedHead = { bytes: Uint8Array; totalSize?: number };
-
-async function probeHead(url: string): Promise<ProbedHead | null> {
-  try {
-    const response = await fetch(url, { headers: { Range: "bytes=0-65535" } });
-    if (!response.ok) return null;
-    const range = /\/(\d+)\s*$/.exec(
-      response.headers.get("content-range") ?? "",
+/** 把 music-metadata 的解析结果折成面板用到的字段，大小和时长由调用方给。 */
+export function infoFromMetadata(
+  metadata: Pick<IAudioMetadata, "format" | "common">,
+  fileSizeBytes: number | undefined,
+  durationInSeconds: number,
+): { info: SpectraAudioInfo; tags: SpectraTags } {
+  const { format, common } = metadata;
+  const info: SpectraAudioInfo = {
+    sampleRate: format.sampleRate,
+    // 有损格式没有位深，music-metadata 也不会给
+    bitDepth: format.bitsPerSample,
+    channels: format.numberOfChannels,
+    format: formatLabel(format.container, format.codec),
+  };
+  if (fileSizeBytes) {
+    info.fileSizeBytes = fileSizeBytes;
+    info.bitrateKbps = Math.round(
+      (fileSizeBytes * 8) / durationInSeconds / 1000,
     );
-    const length = Number(response.headers.get("content-length"));
-    const totalSize = range
-      ? Number(range[1])
-      : Number.isFinite(length) && length > 0
-        ? length
-        : undefined;
-    const reader = response.body?.getReader();
-    if (!reader)
-      return {
-        bytes: new Uint8Array(await response.arrayBuffer()).slice(0, 65536),
-        totalSize,
-      };
-    const chunks: Uint8Array[] = [];
-    let received = 0;
-    while (received < 65536) {
-      const { done, value } = await reader.read();
-      if (done || !value) break;
-      chunks.push(value);
-      received += value.length;
-    }
-    await reader.cancel().catch(() => undefined);
-    const bytes = new Uint8Array(received);
-    let at = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, at);
-      at += chunk.length;
-    }
-    return { bytes, totalSize };
-  } catch {
-    return null;
+  }
+  const tags: SpectraTags = {};
+  if (common.year) tags.year = common.year;
+  if (common.track.no) tags.trackNumber = common.track.no;
+  const genre = common.genre?.[0];
+  if (genre) tags.genre = genre;
+  if (common.bpm) tags.bpm = Math.round(common.bpm);
+  return { info, tags };
+}
+
+/** 流式读取标签：只把文件头读到解析完就停，不会下载整首。 */
+async function probeMetadata(url: string) {
+  const response = await fetch(url);
+  if (!response.ok || !response.body)
+    throw new Error(`读取音频失败: ${response.status}`);
+  const length = Number(response.headers.get("content-length"));
+  const size = Number.isFinite(length) && length > 0 ? length : undefined;
+  try {
+    const metadata = await parseWebStream(
+      response.body,
+      { size, mimeType: response.headers.get("content-type") ?? undefined },
+      { skipCovers: true, skipPostHeaders: true },
+    );
+    return { metadata, size };
+  } finally {
+    await response.body.cancel().catch(() => undefined);
   }
 }
 
@@ -226,44 +165,25 @@ async function readSpectraAudioInfo(
   durationInSeconds: number,
   range: { startInSeconds: number; endInSeconds: number },
 ) {
+  let info: SpectraAudioInfo = {};
+  let tags: SpectraTags = {};
+
+  // 技术参数和标签交给 music-metadata；读不出来就留空，界面显示 “—”
+  try {
+    const { metadata, size } = await probeMetadata(src);
+    ({ info, tags } = infoFromMetadata(metadata, size, durationInSeconds));
+  } catch {
+    // 忽略，下面用解码器兜底
+  }
+
+  // 响度包络要真的解码一遍，用 mediabunny；顺便给采样率 / 声道兜底
   const input = new Input({ source: new UrlSource(src), formats: ALL_FORMATS });
-  const info: SpectraAudioInfo = {};
-  const tags: SpectraTags = {};
   try {
     const track = await input.getPrimaryAudioTrack();
-    const codec = track ? await track.getCodec() : null;
     if (track) {
-      info.sampleRate = await track.getSampleRate();
-      info.channels = await track.getNumberOfChannels();
-      info.bitDepth = pcmBitDepth(codec);
+      info.sampleRate = info.sampleRate ?? (await track.getSampleRate());
+      info.channels = info.channels ?? (await track.getNumberOfChannels());
     }
-    const inputFormat = await input.getFormat().catch(() => null);
-    info.format = formatName(inputFormat?.name ?? "", codec);
-
-    const head = await probeHead(src);
-    if (head) {
-      if (head.totalSize) {
-        info.fileSizeBytes = head.totalSize;
-        info.bitrateKbps = Math.round(
-          (head.totalSize * 8) / durationInSeconds / 1000,
-        );
-      }
-      const flac = parseFlacStreamInfo(head.bytes);
-      if (flac) {
-        info.bitDepth = flac.bitDepth;
-        info.sampleRate = info.sampleRate ?? flac.sampleRate;
-        info.channels = info.channels ?? flac.channels;
-      }
-    }
-
-    const metadata = await input.getMetadataTags().catch(() => null);
-    if (metadata) {
-      const year = metadata.date?.getUTCFullYear();
-      if (year && Number.isFinite(year)) tags.year = year;
-      if (metadata.trackNumber) tags.trackNumber = metadata.trackNumber;
-      if (metadata.genre) tags.genre = metadata.genre;
-    }
-
     info.peaks = await readLoudnessEnvelope(
       input,
       range.startInSeconds,
