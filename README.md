@@ -19,7 +19,7 @@ nub install
 
 系统需要能调用 `ffmpeg`（没有的话会回退到 `nubx remotion ffmpeg`）。WebGL 背景建议本机装有 Chrome。
 
-把音频和歌词放到 `public/`。`AMLLPlayer` 默认是 `OneLastKiss.flac` + `OneLastKiss.ttml`；`PlaylistPlayer` 默认再接上 `渺小-田馥甄` 和 `周杰伦 - 半岛铁盒`。歌词支持 `.lrc` / `.ttml` / `.yrc` / `.qrc` / `.lys`。
+把音频和歌词放到 `public/`。`AMLLPlayer` 和 `AlbumPlayer` 默认是 `OneLastKiss`；`SpectraPlayer` 默认是 `周杰伦 - 半岛铁盒`；`PlaylistPlayer` 默认把这两首接在一起。歌词支持 `.lrc` / `.ttml` / `.yrc` / `.qrc` / `.lys`。
 
 只有音频、缺歌词或封面时，可先备料。备料会先把音轨和同目录封面、歌词拷到项目根目录 `预处理/<源目录名>/`，再联网匹配并写出 json。单曲还会写出同名 `.txt`（视频标题和简介）。说明见 [`src/prepare/README.md`](src/prepare/README.md)。
 

@@ -73,16 +73,16 @@ test("已齐的曲目在别人缺歌词时保持原样", async () => {
   assert.equal(result.props.tracks[1]?.durationInSeconds, 9);
 });
 
-test("schema 至少一首，默认歌单使用三首已备料曲目", () => {
+test("schema 至少一首，默认歌单使用两首已备料曲目", () => {
   assert.equal(PLAYLIST_COMPOSITION_ID, "PlaylistPlayer");
   assert.equal(playlistCompositionSchema.safeParse({ tracks: [track(2)] }).success, true);
   assert.equal(playlistCompositionSchema.safeParse({ tracks: [] }).success, false);
   const source = readFileSync(new URL("../helpers/default-props.ts", import.meta.url), "utf8");
   assert.match(source, /OneLastKiss\.json/);
-  assert.match(source, /渺小-田馥甄\.json/);
   assert.match(source, /半岛铁盒\.json/);
+  assert.doesNotMatch(source, /渺小/);
   assert.match(
     source,
-    /tracks:\s*\[\s*trackFromPrepared\(oneLastKiss\),\s*trackFromPrepared\(miaoxiao\),\s*trackFromPrepared\(tiehe\),\s*\]/,
+    /tracks:\s*\[\s*trackFromPrepared\(oneLastKiss\),\s*trackFromPrepared\(tiehe\),\s*\]/,
   );
 });

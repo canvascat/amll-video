@@ -7,7 +7,7 @@
 ## 预览与导出
 
 ```console
-# Studio 里选 SpectraPlayer，默认曲目是《渺小》
+# Studio 里选 SpectraPlayer，默认曲目是《半岛铁盒》
 nub run dev
 
 # 指定一首歌预览（不会自动跳到该画面，需要在左侧选 SpectraPlayer，或访问 /SpectraPlayer）
