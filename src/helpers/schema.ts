@@ -28,6 +28,17 @@ export const spectraAudioInfoSchema = z.object({
   peaks: z.array(z.number()).optional(),
 });
 
+export const spectraThemeSchema = z.object({
+  paper: z.string(),
+  ink: z.string(),
+  inkSoft: z.string(),
+  accent: z.string(),
+  bar: z.string(),
+  trace: z.string(),
+  translation: z.string(),
+  unplayed: z.string(),
+});
+
 /** SpectraPlayer：单曲，外加界面上展示的年份 / 曲序 / 流派 / BPM 和音频技术参数。 */
 export const spectraCompositionSchema = trackSchema.extend({
   year: z.number().optional(),
@@ -35,6 +46,10 @@ export const spectraCompositionSchema = trackSchema.extend({
   genre: z.string().optional(),
   bpm: z.number().optional(),
   audioInfo: spectraAudioInfoSchema.optional(),
+  /** 界面配色。不填时按封面自动生成；填了就用填的。 */
+  theme: spectraThemeSchema.optional(),
+  /** 设为 false 时不从封面取色，固定用默认的米色 + 橙色。 */
+  themeFromCover: z.boolean().optional(),
 });
 
 export const albumTrackSchema = z.object({

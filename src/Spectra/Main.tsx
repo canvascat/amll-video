@@ -23,6 +23,7 @@ import {
   formatSampleRate,
   lyricEntries,
 } from "./format";
+import { DEFAULT_THEME } from "./palette";
 import { LyricsPanel } from "./LyricsPanel";
 import { ScopePanel } from "./Scope";
 import { SpectrumPanel, type SpectrumSource } from "./Spectrum";
@@ -36,6 +37,7 @@ import {
   STAGE_WIDTH,
   at,
   labelStyle,
+  themeVars,
 } from "./theme";
 
 const COVER = { x: 42, y: 118, size: 278 } as const;
@@ -107,6 +109,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
   genre,
   bpm,
   audioInfo,
+  theme,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width, height, durationInFrames } = useVideoConfig();
@@ -155,7 +158,13 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
   });
 
   return (
-    <AbsoluteFill style={{ backgroundColor: COLORS.paper, overflow: "hidden" }}>
+    <AbsoluteFill
+      style={{
+        ...themeVars(theme ?? DEFAULT_THEME),
+        backgroundColor: COLORS.paper,
+        overflow: "hidden",
+      }}
+    >
       <Sequence from={-audioOffsetInFrames}>
         {isRendering ? null : <Audio src={audioSrc} />}
       </Sequence>
@@ -172,7 +181,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
           fontFamily: FONT_SANS,
           color: COLORS.ink,
           backgroundImage:
-            "linear-gradient(rgba(35,41,44,0.035) 0.5px, transparent 0.5px), linear-gradient(90deg, rgba(35,41,44,0.035) 0.5px, transparent 0.5px)",
+            "linear-gradient(color-mix(in srgb, var(--sp-ink) 3.5%, transparent) 0.5px, transparent 0.5px), linear-gradient(90deg, color-mix(in srgb, var(--sp-ink) 3.5%, transparent) 0.5px, transparent 0.5px)",
           backgroundSize: "64px 64px",
           backgroundPosition: "10px 16px",
         }}
@@ -230,7 +239,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
               cy={COVER_CENTER.y}
               r={196}
               fill="none"
-              stroke="rgba(35,41,44,0.34)"
+              stroke="color-mix(in srgb, var(--sp-ink) 34%, transparent)"
               strokeWidth={0.8}
               strokeDasharray="0.6 6.4"
               strokeLinecap="round"
@@ -241,7 +250,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
             cy={COVER_CENTER.y}
             r={222}
             fill="none"
-            stroke="rgba(35,41,44,0.07)"
+            stroke="color-mix(in srgb, var(--sp-ink) 7%, transparent)"
             strokeWidth={0.6}
           />
           <circle
@@ -249,7 +258,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
             cy={COVER_CENTER.y}
             r={168}
             fill="none"
-            stroke="rgba(35,41,44,0.07)"
+            stroke="color-mix(in srgb, var(--sp-ink) 7%, transparent)"
             strokeWidth={0.6}
           />
         </svg>
@@ -265,9 +274,10 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
           style={at(COVER.x, COVER.y, {
             width: COVER.size,
             height: COVER.size,
-            backgroundColor: "#cfcbc1",
+            backgroundColor:
+              "color-mix(in srgb, var(--sp-ink) 12%, var(--sp-paper))",
             boxShadow:
-              "0 10px 26px rgba(35,41,44,0.22), 0 2px 5px rgba(35,41,44,0.18)",
+              "0 10px 26px color-mix(in srgb, var(--sp-ink) 22%, transparent), 0 2px 5px color-mix(in srgb, var(--sp-ink) 18%, transparent)",
           })}
         >
           {coverSrc ? (
@@ -382,7 +392,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
             width: 312,
             fontSize: 12,
             lineHeight: "18px",
-            color: "#8b8b86",
+            color: "var(--sp-ink-soft)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",

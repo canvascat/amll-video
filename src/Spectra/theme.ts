@@ -1,22 +1,36 @@
 import type { CSSProperties } from "react";
+import type { SpectraTheme } from "./palette";
 
 /** 界面按 1024×576 的坐标摆放，成片时整体放大到视频尺寸。 */
 export const STAGE_WIDTH = 1024;
 export const STAGE_HEIGHT = 576;
 
+/** 配色走 CSS 变量，换封面只需要换一组变量。变量由 themeVars() 挂在舞台根节点上。 */
 export const COLORS = {
-  paper: "#ebe8e0",
-  ink: "#23292c",
-  inkSoft: "#8b8b86",
-  inkFaint: "#b3b2ac",
-  rule: "rgba(35, 41, 44, 0.12)",
-  ruleSoft: "rgba(35, 41, 44, 0.055)",
-  accent: "#e5683f",
-  bar: "#3b5357",
-  trace: "#4f8f7d",
-  translation: "#4d8f8c",
-  unplayed: "#d9dad4",
+  paper: "var(--sp-paper)",
+  ink: "var(--sp-ink)",
+  inkSoft: "var(--sp-ink-soft)",
+  rule: "color-mix(in srgb, var(--sp-ink) 12%, transparent)",
+  ruleSoft: "color-mix(in srgb, var(--sp-ink) 5.5%, transparent)",
+  accent: "var(--sp-accent)",
+  bar: "var(--sp-bar)",
+  trace: "var(--sp-trace)",
+  translation: "var(--sp-translation)",
+  unplayed: "var(--sp-unplayed)",
 } as const;
+
+export function themeVars(theme: SpectraTheme): Record<string, string> {
+  return {
+    "--sp-paper": theme.paper,
+    "--sp-ink": theme.ink,
+    "--sp-ink-soft": theme.inkSoft,
+    "--sp-accent": theme.accent,
+    "--sp-bar": theme.bar,
+    "--sp-trace": theme.trace,
+    "--sp-translation": theme.translation,
+    "--sp-unplayed": theme.unplayed,
+  };
+}
 
 export const FONT_MONO =
   '"SF Mono", "JetBrains Mono", ui-monospace, Menlo, "PingFang SC", monospace';

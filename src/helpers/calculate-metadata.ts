@@ -12,6 +12,7 @@ import type {
   TrackProps,
 } from "./schema";
 import { loadSpectraAudioInfo } from "../Spectra/audio-info";
+import { loadCoverTheme } from "../Spectra/cover-theme";
 import { resolvePublicAsset } from "./public-asset";
 import { albumSpanInFrames, trackDurationInFrames } from "./track-duration";
 
@@ -165,9 +166,14 @@ export const calculateSpectraMetadata: CalculateMetadataFunction<
     }
   }
 
+  let theme = props.theme;
+  if (!theme && props.themeFromCover !== false) {
+    theme = (await loadCoverTheme(resolvePublicAsset(track.coverImageUrl))) ?? undefined;
+  }
+
   return {
     fps: DEFAULT_FPS,
     durationInFrames: Math.max(1, durationInFrames),
-    props: { ...props, ...track, audioInfo, year, trackNumber, genre },
+    props: { ...props, ...track, audioInfo, year, trackNumber, genre, theme },
   };
 };
