@@ -5,10 +5,10 @@ import { currentLyricIndex, fitFontSize, type LyricEntry } from "./format";
 const LEFT = 719;
 const WIDTH = 246;
 const VIEW_TOP = 82;
-const VIEW_HEIGHT = 104;
-/** 当前句顶边的位置，和相邻两句之间的行距。 */
-const CURRENT_TOP = 142;
-const PITCH = 41;
+const VIEW_HEIGHT = 108;
+/** 当前句顶边的位置（上一句在它上方，下一句在它下方），和相邻两句之间的行距。 */
+const CURRENT_TOP = 119;
+const PITCH = 37;
 const SLIDE_MS = 480;
 
 export const LyricsPanel: React.FC<{
@@ -28,7 +28,7 @@ export const LyricsPanel: React.FC<{
     : 1;
   const visible = entries
     .map((entry, line) => ({ entry, line, rel: line - index + (1 - slide) }))
-    .filter(({ line }) => line <= index && line >= index - 3);
+    .filter(({ line }) => line >= index - 2 && line <= index + 1);
 
   return (
     <>
@@ -46,15 +46,13 @@ export const LyricsPanel: React.FC<{
           width: WIDTH,
           height: VIEW_HEIGHT,
           overflow: "hidden",
-          maskImage:
-            "linear-gradient(to bottom, transparent 0%, black 14%, black 100%)",
         })}
       >
         {visible.map(({ entry, line, rel }) => {
           const opacity = interpolate(
             rel,
-            [-3, -2, -1, 0, 1],
-            [0, 0.08, 0.3, 1, 0],
+            [-2, -1, 0, 1, 2],
+            [0, 0.3, 1, 0.3, 0],
             {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
