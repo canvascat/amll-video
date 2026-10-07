@@ -26,7 +26,8 @@ import {
 import { DEFAULT_THEME } from "./palette";
 import { LyricsPanel } from "./LyricsPanel";
 import { ScopePanel } from "./Scope";
-import { SpectrumPanel, type SpectrumSource } from "./Spectrum";
+import { BAR_COUNT, SpectrumPanel } from "./Spectrum";
+import { spectrumFrame } from "./analysis";
 import { TimelinePanel } from "./Timeline";
 import { lowBandTrace } from "./trace";
 import {
@@ -135,8 +136,14 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
   );
   const samples = audioData?.channelWaveforms[0] ?? null;
 
-  const source: SpectrumSource | null = samples
-    ? { samples, sampleRate, centerSample, samplesPerFrame: sampleRate / fps }
+  const live = samples
+    ? spectrumFrame({
+        samples,
+        sampleRate,
+        centerSample,
+        samplesPerFrame: sampleRate / fps,
+        bandCount: BAR_COUNT,
+      })
     : null;
   const trace = samples
     ? lowBandTrace({
@@ -441,7 +448,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
           timeMs={audioSeconds * 1000}
           frame={frame}
         />
-        <SpectrumPanel source={source} maxHz={sampleRate / 2} />
+        <SpectrumPanel live={live} maxHz={sampleRate / 2} />
         <ScopePanel trace={trace} />
         <TimelinePanel
           peaks={audioInfo?.peaks}

@@ -1,31 +1,19 @@
 import { amplitudeLabel, frequencyTicks } from "./format";
-import { DB_FLOOR, dbToRatio, spectrumFrame } from "./analysis";
+import { DB_FLOOR, dbToRatio, type SpectrumFrame } from "./analysis";
 import { COLORS, PLOT, at, axisStyle, labelStyle } from "./theme";
 
 export const BAR_COUNT = 100;
 const DB_STEP = 20;
 const ROWS = Array.from({ length: 10 }, (_, index) => -index * DB_STEP);
 
-export type SpectrumSource = {
-  samples: Float32Array;
-  sampleRate: number;
-  centerSample: number;
-  samplesPerFrame: number;
-};
-
+/**
+ * 只收算好的柱子和峰值（各 100 个数），不收原始采样：
+ * React 开发版会逐项遍历变化的 props 来记录性能轨迹，几百万个采样的数组会让 Studio 卡住数秒。
+ */
 export const SpectrumPanel: React.FC<{
-  source: SpectrumSource | null;
+  live: SpectrumFrame | null;
   maxHz: number;
-}> = ({ source, maxHz }) => {
-  const live = source
-    ? spectrumFrame({
-        samples: source.samples,
-        sampleRate: source.sampleRate,
-        centerSample: source.centerSample,
-        samplesPerFrame: source.samplesPerFrame,
-        bandCount: BAR_COUNT,
-      })
-    : null;
+}> = ({ live, maxHz }) => {
   const bars = live?.bars ?? Array.from({ length: BAR_COUNT }, () => DB_FLOOR);
   const peaks = live?.peaks ?? bars;
   const pitch = PLOT.width / BAR_COUNT;
