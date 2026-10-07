@@ -65,6 +65,170 @@ const NO_COLON_SEPARATORS = new Set([
 
 const KEYWORD_SET = new Set(CREDIT_KEYWORDS.map(normalizeCredit));
 
+const ROLE_ATOMS = [
+  "背景人声",
+  "作词",
+  "作詞",
+  "作曲",
+  "编曲",
+  "編曲",
+  "填词",
+  "填詞",
+  "词曲",
+  "詞曲",
+  "制作人",
+  "製作人",
+  "制作",
+  "製作",
+  "监制",
+  "監製",
+  "出品",
+  "发行",
+  "發行",
+  "原唱",
+  "原曲",
+  "翻唱",
+  "配唱",
+  "主唱",
+  "副唱",
+  "和声",
+  "和聲",
+  "合声",
+  "合聲",
+  "合唱",
+  "和音",
+  "伴唱",
+  "伴奏",
+  "人声",
+  "人聲",
+  "女声",
+  "男声",
+  "小提琴",
+  "中提琴",
+  "大提琴",
+  "手风琴",
+  "手風琴",
+  "电子琴",
+  "電子琴",
+  "打击乐",
+  "打擊樂",
+  "合成器",
+  "萨克斯",
+  "长笛",
+  "吉他",
+  "贝斯",
+  "贝司",
+  "貝斯",
+  "钢琴",
+  "鋼琴",
+  "键盘",
+  "鍵盤",
+  "弦乐",
+  "弦樂",
+  "口琴",
+  "二胡",
+  "琵琶",
+  "古筝",
+  "古箏",
+  "笛子",
+  "唢呐",
+  "嗩吶",
+  "竖琴",
+  "豎琴",
+  "风琴",
+  "風琴",
+  "录音",
+  "錄音",
+  "混音",
+  "母带",
+  "母帶",
+  "编程",
+  "編程",
+  "编写",
+  "編寫",
+  "工程",
+  "助理",
+  "重奏",
+  "作者",
+  "指挥",
+  "指揮",
+  "乐团",
+  "樂團",
+  "乐队",
+  "樂隊",
+  "lyricist",
+  "composer",
+  "arranger",
+  "producer",
+  "programmer",
+  "engineer",
+  "recording",
+  "keyboards",
+  "keyboard",
+  "percussion",
+  "strings",
+  "mixing",
+  "studio",
+  "vocals",
+  "violin",
+  "guitar",
+  "chorus",
+  "scratch",
+  "cello",
+  "viola",
+  "piano",
+  "vocal",
+  "drums",
+  "synth",
+  "bass",
+  "drum",
+  "词",
+  "詞",
+  "曲",
+  "师",
+  "師",
+  "室",
+  "鼓",
+  "op",
+  "sp",
+].sort((left, right) => right.length - left.length || left.localeCompare(right));
+
+const ROLE_MODIFIERS = [
+  "执行",
+  "联合",
+  "聯合",
+  "首席",
+  "客座",
+  "前奏",
+  "间奏",
+  "間奏",
+  "尾奏",
+  "过带",
+  "過帶",
+  "总",
+  "總",
+  "副",
+  "原",
+  "主",
+  "双",
+  "雙",
+  "电",
+  "電",
+  "木",
+  "一",
+  "二",
+  "三",
+  "四",
+  "五",
+  "六",
+  "七",
+  "八",
+  "九",
+  "十",
+];
+
+const SPOKEN = /[我你他她它的了吗呢吧啊不没爱在是有这那就都也还会要想说把被让给与和又很太最]/;
+
 function normalizeCredit(text: string): string {
   return text.normalize("NFKC").toLowerCase().replace(/\s+/g, "");
 }
@@ -118,7 +282,7 @@ export function isLyricMetadataLine(text: string): boolean {
     if (!key) {
       return false;
     }
-    if (KEYWORD_SET.has(key)) {
+    if (KEYWORD_SET.has(key) || isCreditRoleKey(key)) {
       return true;
     }
     for (const keyword of KEYWORD_SET) {
@@ -153,6 +317,133 @@ export function isLyricMetadataLine(text: string): boolean {
     }
   }
   return false;
+}
+
+function isCreditRoleKey(raw: string): boolean {
+  let rest = normalizeCredit(raw).replace(/[/&+、._-]/g, "");
+  if (!rest) {
+    return false;
+  }
+  let sawAtom = false;
+  while (rest) {
+    if (sawAtom && /^[手组組]/.test(rest)) {
+      rest = rest.slice(1);
+      continue;
+    }
+    const ordinal = /^(?:\d+(?:st|nd|rd|th)?)/.exec(rest);
+    if (ordinal && ordinal[0].length < rest.length) {
+      rest = rest.slice(ordinal[0].length);
+      continue;
+    }
+    const atom = ROLE_ATOMS.find((item) => rest.startsWith(item));
+    if (atom) {
+      sawAtom = true;
+      rest = rest.slice(atom.length);
+      continue;
+    }
+    const modifier = ROLE_MODIFIERS.find((item) => rest.startsWith(item));
+    if (modifier) {
+      rest = rest.slice(modifier.length);
+      continue;
+    }
+    return false;
+  }
+  return sawAtom;
+}
+
+function splitLabel(text: string): { key: string; value: string } | null {
+  const cleaned = unwrapBrackets(text.trim());
+  const colon = /[:：]/.exec(cleaned);
+  if (!colon || colon.index <= 0) {
+    return null;
+  }
+  const key = cleaned.slice(0, colon.index).trim();
+  const value = cleaned.slice(colon.index + 1).trim();
+  if (!key || !value) {
+    return null;
+  }
+  return { key, value };
+}
+
+function isPersonName(value: string): boolean {
+  const text = value.replace(/[（(][^）)]*[）)]/g, "").trim();
+  if (!text || SPOKEN.test(text)) {
+    return false;
+  }
+  const parts = text.split(/\s*[/、&+,，]\s*/).filter(Boolean);
+  if (parts.length === 0) {
+    return false;
+  }
+  return parts.every((part) => {
+    if (/^[\u4e00-\u9fff]{2,4}$/.test(part)) {
+      return true;
+    }
+    const words = part.split(/\s+/).filter(Boolean);
+    if (words.length === 0 || words.length > 6) {
+      return false;
+    }
+    return words.every((word) => {
+      if (/^(?:of|the|and|for|by)$/i.test(word)) {
+        return true;
+      }
+      if (/^[A-Z][A-Z0-9.'’+-]*$/.test(word)) {
+        return true;
+      }
+      return /^[A-Z][a-zA-Z0-9.'’+-]*$/.test(word);
+    });
+  });
+}
+
+function isEdgeAttribution(text: string): boolean {
+  const parts = splitLabel(text);
+  if (!parts) {
+    return false;
+  }
+  const key = normalizeCredit(parts.key);
+  if (key.length < 4 || SPOKEN.test(key) || isCreditRoleKey(key)) {
+    return false;
+  }
+  return isPersonName(parts.value);
+}
+
+function looksLikeTitleLine(text: string): boolean {
+  const trimmed = unwrapBrackets(text.trim());
+  if (!trimmed || trimmed.length > 60 || /[:：]/.test(trimmed)) {
+    return false;
+  }
+  return /^.{1,40}\s*[-–—－]\s*.{1,40}$/.test(trimmed);
+}
+
+function isLeadingTitleLine(text: string, index: number, texts: readonly string[]): boolean {
+  if (!looksLikeTitleLine(text)) {
+    return false;
+  }
+  for (let next = index + 1; next < texts.length && next < index + 12; next++) {
+    const line = texts[next] ?? "";
+    if (!line) {
+      continue;
+    }
+    if (isLyricMetadataLine(line) || looksLikeTitleLine(line)) {
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+
+function peelEdgeCredits(texts: readonly string[], excluded: Set<number>, step: 1 | -1) {
+  const start = step === 1 ? 0 : texts.length - 1;
+  for (let index = start; index >= 0 && index < texts.length; index += step) {
+    const text = texts[index] ?? "";
+    if (!text || excluded.has(index)) {
+      continue;
+    }
+    if (isEdgeAttribution(text) || (step === 1 && isLeadingTitleLine(text, index, texts))) {
+      excluded.add(index);
+      continue;
+    }
+    break;
+  }
 }
 
 function splitArtists(artists: string | readonly string[]): string[] {
@@ -202,6 +493,9 @@ export function stripLyricMetadata(
       }
     }
   }
+
+  peelEdgeCredits(texts, excluded, 1);
+  peelEdgeCredits(texts, excluded, -1);
 
   let first = -1;
   for (let index = 0; index < lines.length; index++) {
