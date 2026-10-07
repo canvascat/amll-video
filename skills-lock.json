@@ -11,73 +11,73 @@
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-best-practices/SKILL.md",
-      "computedHash": "31c6f5ad5ba86413099287b6d62b750d6c995d1a7c0f66caa246ba3bd34769f4"
+      "computedHash": "4fc068202ed6571b783c281794e0470eba2ef03dc4237bfde074efdafc396e28"
     },
     "remotion-captions": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-captions/SKILL.md",
-      "computedHash": "900a0714e6f47069a8ee1a0be51d630ceec5a9eaf4a1fca86cd54ac3ddb1026d"
+      "computedHash": "c20d6e5b4ea585e5cae59de3346a7d33272411ec6f55c241a40ba516d4907ed5"
     },
     "remotion-create": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-create/SKILL.md",
-      "computedHash": "342d440a59ba05683cb26429194d4a9a1c795fdcdb900df07a78d3c381a90cbd"
+      "computedHash": "287c47ff47b3b8c257af8ba1c53880e60ee450510342302c8cfa0f820317fc01"
     },
     "remotion-docs": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-docs/SKILL.md",
-      "computedHash": "4b89791ccbb5ef2fe9ae0d20e23650e8eb389690cf465bdf7c8bce987ab92466"
+      "computedHash": "56f6c5e4a99e34075c4f9d863d37ac3f0840b6748d8e8b1e82f7b168eaeb6966"
     },
     "remotion-interactivity": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-interactivity/SKILL.md",
-      "computedHash": "8107a8adafb50c9031cc2a6090ee8b8b33295cfda57d678a05f73235bc914593"
+      "computedHash": "7a815da6d270bdf375b43867a588fa8a3ae3cdbe8eae7413fe9ed1a469a36b25"
     },
     "remotion-maps": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-maps/SKILL.md",
-      "computedHash": "9a5b17447f4427b0cc3cea844c2fa3dda5d0793dc21e1a461ae34fd9f08b1823"
+      "computedHash": "5012ca1ee8d0ceec7243e2b405e64224c2b16dbf48750b5f2b27f176ed32e966"
     },
     "remotion-markup": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-markup/SKILL.md",
-      "computedHash": "ecb689226271304d6b28e908f7506eb08c346cc447836955e277934f54686bb8"
+      "computedHash": "eca6bde4c81461a321c87ee99d854dbfc856f363c86f2117639fbac3c47ca601"
     },
     "remotion-multimedia": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-multimedia/SKILL.md",
-      "computedHash": "ee2d4d154f149c044e285bc193d8e8bc6bb5409d047b53f3ba8a1c593710bf10"
+      "computedHash": "df4b7c5b546201da05e9062720ece14896ae94b8e934d94c6426a2ed80d5a074"
     },
     "remotion-render": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-render/SKILL.md",
-      "computedHash": "2634ecad2c22bfcb28d3d523b9ef642d114c971b31f54fea71061a31cdfd17fc"
+      "computedHash": "b35a2f48683cc11ccfa3bfd6531af8ff4a078d516a097fa68211a484057320a2"
     },
     "remotion-saas": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-saas/SKILL.md",
-      "computedHash": "f9ef0b4276fbb64a06198182416cf380a5035cbead0f7b8470336b438bc3ed0d"
+      "computedHash": "186a1ae8b44b21ad42282ee18e78957c613c2edebc91dd406af23ea2023d6e6a"
     },
     "remotion-studio": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-studio/SKILL.md",
-      "computedHash": "b517ffa02c4a922e003f824f345ed4b87ed57ef65b6182d707991f213b7b1ae5"
+      "computedHash": "53fbd0068aa76d80ae22d6fa2103edf01b234855f72880373929779f5469b244"
     },
     "remotion-upgrade": {
       "source": "remotion-dev/skills",
       "sourceType": "github",
       "skillPath": "skills/remotion-upgrade/SKILL.md",
-      "computedHash": "39d20054532ba030e7566792b46b39a74a688c479abd58b75bd918911f906a1e"
+      "computedHash": "326cf8c9ee7b7ea12bbb8b72ab72776d47e9296588702f113dd0ec10d5a1116f"
     }
   }
 }
