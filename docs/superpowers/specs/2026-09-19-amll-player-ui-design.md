@@ -1,4 +1,4 @@
-# AMLL 播放界面接入 rmv
+# AMLL 播放界面接入 mlvf
 
 日期：2026-09-19  
 状态：待实现  
@@ -6,7 +6,7 @@
 
 ## 目标
 
-rmv 的成片画面改成 Apple Music-like 歌词播放页：动态 Mesh 背景、左侧封面与曲目信息、右侧滚动歌词。画幅 1920×1080 横屏。在 Remotion Studio 里预览，并用 Remotion 自带流程渲染。
+mlvf 的成片画面改成 Apple Music-like 歌词播放页：动态 Mesh 背景、左侧封面与曲目信息、右侧滚动歌词。画幅 1920×1080 横屏。在 Remotion Studio 里预览，并用 Remotion 自带流程渲染。
 
 频谱 / 波形可视化整页替换，不再保留。合成、导出 CLI（ffmpeg mux、MKV、原音频拷贝）不在本次范围。
 

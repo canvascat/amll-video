@@ -1,7 +1,7 @@
 {
-	"name": "amll-video",
+	"name": "mlvf",
 	"version": "1.0.0",
-	"description": "Apple Music Like Lyrics Remotion Video",
+	"description": "Music Lyrics Video Factory",
 	"private": true,
 	"license": "GPL-3.0",
 	"engines": {

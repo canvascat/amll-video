@@ -1,4 +1,4 @@
-export const CLIENT_NAME = "rmv";
+export const CLIENT_NAME = "mlvf";
 export const CLIENT_VERSION = "1.0.0";
 export const USER_AGENT = `${CLIENT_NAME}/${CLIENT_VERSION}`;
 export const LRCLIB_USER_AGENT = `${CLIENT_NAME}/${CLIENT_VERSION} (lyrics lookup)`;

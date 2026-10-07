@@ -1,6 +1,6 @@
-# rmv
+# mlvf
 
-用 Remotion 做 1920×1080 的歌词视频，Studio 里有四套画面：
+Music Lyrics Video Factory。用 Remotion 做 1920×1080 的歌词视频，Studio 里有四套画面：
 
 - `AMLLPlayer`：一首歌。动态 Mesh 背景，左侧封面和曲目信息，右侧滚动歌词。
 - `SpectraPlayer`：一首歌，换成米色频谱仪面板：封面、正在播放、实时频谱（20 Hz 到奈奎斯特，dBFS 刻度）、低频波形、曲目时间轴、当前句歌词和翻译，以及底部的采样率 / 位深 / 声道 / 格式 / 码率 / 文件大小。技术参数和时间轴包络在 `calculateMetadata` 里从音频文件读出，读不到的项显示 `—`。配色默认从封面自动取色（强调色取封面最鲜的主色，纸色 / 墨色跟着它的色相走，柱子和波形取互补色）；props 里传 `theme` 可以手动指定，`themeFromCover: false` 则固定用米色 + 橙色。
