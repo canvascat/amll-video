@@ -8,8 +8,11 @@ import type {
   AlbumCompositionProps,
   PlayerCompositionProps,
   PlaylistCompositionProps,
+  SpectraCompositionProps,
   TrackProps,
 } from "./schema";
+import { loadSpectraAudioInfo } from "../Spectra/audio-info";
+import { resolvePublicAsset } from "./public-asset";
 import { albumSpanInFrames, trackDurationInFrames } from "./track-duration";
 
 const isBlank = (value: string | undefined): boolean =>
@@ -129,4 +132,42 @@ export const calculatePlaylistMetadata: CalculateMetadataFunction<
   return resolvePlaylistMetadata(props, (track) =>
     resolveTrack(track, abortSignal, { lyrics: true }),
   );
+};
+
+export const calculateSpectraMetadata: CalculateMetadataFunction<
+  SpectraCompositionProps
+> = async ({ props, abortSignal }) => {
+  const track = await resolveTrack(props, abortSignal, { lyrics: true });
+  const durationInSeconds = track.durationInSeconds as number;
+  const durationInFrames = trackDurationInFrames(
+    durationInSeconds,
+    track.audioOffsetInSeconds,
+    DEFAULT_FPS,
+    track.audioEndInSeconds,
+  );
+
+  let { audioInfo, year, trackNumber, genre } = props;
+  // 技术参数缺项（或还没有包络）时，从音频文件本身读取；读不到就留空，界面显示 “—”
+  if (!audioInfo?.peaks?.length) {
+    const loaded = await loadSpectraAudioInfo(
+      resolvePublicAsset(track.audioFileUrl),
+      durationInSeconds,
+      {
+        startInSeconds: track.audioOffsetInSeconds,
+        endInSeconds: track.audioEndInSeconds ?? durationInSeconds,
+      },
+    ).catch(() => null);
+    if (loaded) {
+      audioInfo = { ...loaded.info, ...audioInfo };
+      year = year ?? loaded.tags.year;
+      trackNumber = trackNumber ?? loaded.tags.trackNumber;
+      genre = genre ?? loaded.tags.genre;
+    }
+  }
+
+  return {
+    fps: DEFAULT_FPS,
+    durationInFrames: Math.max(1, durationInFrames),
+    props: { ...props, ...track, audioInfo, year, trackNumber, genre },
+  };
 };

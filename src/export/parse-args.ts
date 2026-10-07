@@ -31,6 +31,8 @@ export type ExportArgs = {
   preview?: boolean;
   album?: boolean;
   srt?: boolean;
+  /** 单曲用 SpectraPlayer：频谱仪风格的界面。 */
+  spectra?: boolean;
   background?: BackgroundMotion;
   /** 网易云歌单：config 是歌单链接 / ID（先下载再导出），或下载后生成的 export.json。 */
   playlist?: boolean;
@@ -63,6 +65,7 @@ json 相对配置文件所在目录解析音频 / 歌词 / 封面。
   --concurrency  并行渲染路数，数字或 50%；默认 1 路
   --preview      打开 Remotion Studio 预览，而不是直接导出
   --background   AMLLPlayer 背景：slow（默认，一半速度）、static（静止）、normal（原来的速度）
+  --spectra      用 SpectraPlayer：米色仪表盘界面，带实时频谱、低频波形、曲目时间轴和技术参数（仅单曲）
   --album        用 AlbumPlayer：毛玻璃封面、整轨一条音频、按时间切歌名。传入 .cue 时自动开启
   --srt          只为整轨 .cue 写出字幕：按曲目起点拼接，不写入偏移，并列出疑似偏移
   --playlist     用 PlaylistPlayer 导出网易云歌单。传入歌单链接 / ID 时自动开启
@@ -85,6 +88,7 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     preview?: boolean;
     album?: boolean;
     srt?: boolean;
+    spectra?: boolean;
     background?: string;
     playlist?: boolean;
     server?: string;
@@ -106,6 +110,7 @@ export function parseExportArgs(argv: string[]): ExportArgs {
         preview: { type: "boolean" },
         album: { type: "boolean" },
         srt: { type: "boolean" },
+        spectra: { type: "boolean" },
         background: { type: "string" },
         playlist: { type: "boolean" },
         server: { type: "string" },
@@ -157,6 +162,9 @@ export function parseExportArgs(argv: string[]): ExportArgs {
   if (playlist && (values.album || (config && path.extname(config).toLowerCase() === ".cue"))) {
     throw new UsageError(`--playlist 不能和 --album 或 .cue 一起用\n\n${USAGE}`);
   }
+  if (values.spectra && (playlist || values.album || (config && path.extname(config).toLowerCase() === ".cue"))) {
+    throw new UsageError(`--spectra 只用于单曲，不能和 --album、--playlist 或 .cue 一起用\n\n${USAGE}`);
+  }
   if ((values.refresh || values["prepare-only"] || values.server) && !playlist) {
     throw new UsageError(
       `--server / --refresh / --prepare-only 只用于网易云歌单（加 --playlist 或直接传歌单链接）\n\n${USAGE}`,
@@ -171,6 +179,7 @@ export function parseExportArgs(argv: string[]): ExportArgs {
     concurrency: parseConcurrency(values.concurrency),
     preview: Boolean(values.preview),
     srt: Boolean(values.srt),
+    spectra: Boolean(values.spectra),
     background,
     album: playlist
       ? false

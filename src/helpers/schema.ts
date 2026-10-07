@@ -18,6 +18,25 @@ export const trackSchema = z.object({
 
 export const playerCompositionSchema = trackSchema;
 
+export const spectraAudioInfoSchema = z.object({
+  sampleRate: z.number().optional(),
+  bitDepth: z.number().optional(),
+  channels: z.number().optional(),
+  format: z.string().optional(),
+  bitrateKbps: z.number().optional(),
+  fileSizeBytes: z.number().optional(),
+  peaks: z.array(z.number()).optional(),
+});
+
+/** SpectraPlayer：单曲，外加界面上展示的年份 / 曲序 / 流派 / BPM 和音频技术参数。 */
+export const spectraCompositionSchema = trackSchema.extend({
+  year: z.number().optional(),
+  trackNumber: z.number().optional(),
+  genre: z.string().optional(),
+  bpm: z.number().optional(),
+  audioInfo: spectraAudioInfoSchema.optional(),
+});
+
 export const albumTrackSchema = z.object({
   songName: z.string().optional(),
   audioOffsetInSeconds: z.number().min(0),
@@ -38,6 +57,10 @@ export type TrackProps = Omit<z.infer<typeof trackSchema>, "lyricLines"> & {
 };
 
 export type PlayerCompositionProps = TrackProps;
+
+export type SpectraCompositionProps = Omit<z.infer<typeof spectraCompositionSchema>, "lyricLines"> & {
+  lyricLines?: LyricLine[];
+};
 
 export type AlbumTrackProps = z.infer<typeof albumTrackSchema>;
 

@@ -2,7 +2,12 @@ import { staticFile } from "remotion";
 import oneLastKiss from "../../public/OneLastKiss.json";
 import tiehe from "../../public/周杰伦 - 半岛铁盒.json";
 import miaoxiao from "../../public/渺小-田馥甄.json";
-import type { AlbumCompositionProps, PlayerCompositionProps, PlaylistCompositionProps } from "./schema";
+import type {
+  AlbumCompositionProps,
+  PlayerCompositionProps,
+  PlaylistCompositionProps,
+  SpectraCompositionProps,
+} from "./schema";
 
 type PreparedSong = {
   audioFileUrl: string;
@@ -46,6 +51,8 @@ export const defaultPlaylistProps: PlaylistCompositionProps = {
 };
 
 export const defaultPlayerProps: PlayerCompositionProps = defaultTrack;
+
+export const defaultSpectraProps: SpectraCompositionProps = trackFromPrepared(miaoxiao);
 
 export const defaultAlbumProps: AlbumCompositionProps = {
   audioFileUrl: defaultTrack.audioFileUrl,

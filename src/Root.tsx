@@ -7,18 +7,27 @@ import {
   calculateAlbumMetadata,
   calculatePlayerMetadata,
   calculatePlaylistMetadata,
+  calculateSpectraMetadata,
 } from "./helpers/calculate-metadata";
-import { defaultAlbumProps, defaultPlayerProps, defaultPlaylistProps } from "./helpers/default-props";
+import {
+  defaultAlbumProps,
+  defaultPlayerProps,
+  defaultPlaylistProps,
+  defaultSpectraProps,
+} from "./helpers/default-props";
 import {
   albumCompositionSchema,
   playerCompositionSchema,
   playlistCompositionSchema,
+  spectraCompositionSchema,
 } from "./helpers/schema";
 import { Player } from "./Player/Main";
+import { SpectraPlayer } from "./Spectra/Main";
 import {
   ALBUM_COMPOSITION_ID,
   COMPOSITION_ID,
   PLAYLIST_COMPOSITION_ID,
+  SPECTRA_COMPOSITION_ID,
   DEFAULT_FPS,
   VIDEO_HEIGHT,
   VIDEO_WIDTH,
@@ -59,6 +68,17 @@ export const RemotionRoot: FC = () => {
         schema={playlistCompositionSchema}
         defaultProps={defaultPlaylistProps}
         calculateMetadata={calculatePlaylistMetadata}
+      />
+      <Composition
+        id={SPECTRA_COMPOSITION_ID}
+        component={SpectraPlayer}
+        width={VIDEO_WIDTH}
+        height={VIDEO_HEIGHT}
+        fps={DEFAULT_FPS}
+        durationInFrames={300}
+        schema={spectraCompositionSchema}
+        defaultProps={defaultSpectraProps}
+        calculateMetadata={calculateSpectraMetadata}
       />
     </>
   );

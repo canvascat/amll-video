@@ -108,3 +108,14 @@ test("--server / --refresh / --prepare-only 只用于歌单", () => {
   assert.equal(args.refresh, true);
   assert.equal(args.prepareOnly, true);
 });
+
+test("--spectra 走频谱仪播放器，默认关闭", () => {
+  assert.equal(parseExportArgs(["song.json"]).spectra, false);
+  assert.equal(parseExportArgs(["song.json", "--spectra"]).spectra, true);
+});
+
+test("--spectra 不能和专辑、歌单、.cue 一起用", () => {
+  assert.throws(() => parseExportArgs(["album.json", "--spectra", "--album"]), UsageError);
+  assert.throws(() => parseExportArgs(["菲卖品.cue", "--spectra"]), UsageError);
+  assert.throws(() => parseExportArgs(["https://music.163.com/playlist?id=1", "--spectra"]), UsageError);
+});

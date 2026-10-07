@@ -1,8 +1,9 @@
 # rmv
 
-用 Remotion 做 1920×1080 的歌词视频，Studio 里有三套画面：
+用 Remotion 做 1920×1080 的歌词视频，Studio 里有四套画面：
 
 - `AMLLPlayer`：一首歌。动态 Mesh 背景，左侧封面和曲目信息，右侧滚动歌词。
+- `SpectraPlayer`：一首歌，换成米色频谱仪面板：封面、正在播放、实时频谱（20 Hz 到奈奎斯特，dBFS 刻度）、低频波形、曲目时间轴、当前句歌词和翻译，以及底部的采样率 / 位深 / 声道 / 格式 / 码率 / 文件大小。技术参数和时间轴包络在 `calculateMetadata` 里从音频文件读出，读不到的项显示 `—`。
 - `AlbumPlayer`：一张整轨。毛玻璃封面，按时间切歌名，不滚动歌词。
 - `PlaylistPlayer`：一份歌单。海报墙铺开，当前这首展开并显示当前句歌词和波形，切歌时镜头飞到下一张。
 
@@ -107,6 +108,7 @@ nub src/export/cli.ts --config <配置.json>
 | `--concurrency` | 并行渲染路数，数字或 `50%`；默认 1 路。开太高歌词会闪 |
 | `--preview` | 打开 Studio，不导出 |
 | `--background` | AMLLPlayer 背景：`slow`（默认，一半速度）、`static`（静止）、`normal`（原来的速度）。专辑会忽略 |
+| `--spectra` | 单曲改用 `SpectraPlayer`，不能和 `--album`、`--playlist`、`.cue` 一起用 |
 | `--album` | 用 `AlbumPlayer`。直接传入 `.cue` 时自动开启，不需要歌词 |
 | `--playlist` | 用 `PlaylistPlayer` 导出网易云歌单。传入歌单链接或 ID 时自动开启；传 `export.json` 时需要显式加上 |
 | `--server` | music-dl web 地址，只用于歌单下载 |
