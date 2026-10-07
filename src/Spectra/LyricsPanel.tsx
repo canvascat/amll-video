@@ -1,6 +1,13 @@
 import { Easing, interpolate } from "remotion";
 import { FONT_SANS, COLORS, at, labelStyle } from "./theme";
-import { currentLyricIndex, fitFontSize, type LyricEntry } from "./format";
+import {
+  currentLyricIndex,
+  fitFontSize,
+  karaokeGradient,
+  wordProgress,
+  type LyricEntry,
+  type LyricWord,
+} from "./format";
 
 const LEFT = 719;
 const WIDTH = 246;
@@ -10,6 +17,40 @@ const VIEW_HEIGHT = 108;
 const CURRENT_TOP = 119;
 const PITCH = 37;
 const SLIDE_MS = 480;
+
+/** 没唱到的字保留多少浓度；换句的上滚动画里从 1 渐变到这个值，避免突然变淡。 */
+const UNSUNG_ALPHA = 0.38;
+
+/** 当前句逐字高亮：每个字按唱到的比例从淡色填成墨色。 */
+const KaraokeLine: React.FC<{
+  words: readonly LyricWord[];
+  timeMs: number;
+  unsungAlpha: number;
+}> = ({ words, timeMs, unsungAlpha }) => {
+  const unsung = `color-mix(in srgb, ${COLORS.ink} ${(unsungAlpha * 100).toFixed(1)}%, transparent)`;
+  return (
+    <>
+      {words.map((word, index) => (
+        <span
+          key={index}
+          style={{
+            whiteSpace: "pre",
+            color: "transparent",
+            backgroundImage: karaokeGradient(
+              wordProgress(word, timeMs),
+              COLORS.ink,
+              unsung,
+            ),
+            backgroundClip: "text",
+            WebkitBackgroundClip: "text",
+          }}
+        >
+          {word.text}
+        </span>
+      ))}
+    </>
+  );
+};
 
 export const LyricsPanel: React.FC<{
   entries: readonly LyricEntry[];
@@ -79,15 +120,24 @@ export const LyricsPanel: React.FC<{
                   color: COLORS.ink,
                 }}
               >
-                {entry.text}
+                {entry.words && line === index ? (
+                  <KaraokeLine
+                    words={entry.words}
+                    timeMs={timeMs}
+                    unsungAlpha={1 - slide * (1 - UNSUNG_ALPHA)}
+                  />
+                ) : (
+                  entry.text
+                )}
               </div>
               {entry.translation ? (
                 <div
                   style={{
                     marginTop: 1,
-                    fontSize: fitFontSize(entry.translation, 10.5, WIDTH),
-                    lineHeight: "14px",
+                    fontSize: fitFontSize(entry.translation, 9.5, WIDTH),
+                    lineHeight: "13px",
                     color: COLORS.translation,
+                    opacity: 0.8,
                   }}
                 >
                   {entry.translation}

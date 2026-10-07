@@ -71,7 +71,7 @@ test("任何主色下，正文、标签和翻译都读得清", () => {
       `inkSoft ${hue} ${theme.inkSoft}`,
     );
     assert.ok(
-      contrast(theme.translation) >= 3,
+      contrast(theme.translation) >= 2.5,
       `translation ${hue} ${theme.translation}`,
     );
     assert.ok(contrast(theme.bar) >= 6, `bar ${hue} ${theme.bar}`);
@@ -82,6 +82,6 @@ test("任何主色下，正文、标签和翻译都读得清", () => {
 test("默认配色本身也满足同样的可读性", () => {
   assert.ok(chroma.contrast(DEFAULT_THEME.ink, DEFAULT_THEME.paper) >= 10);
   assert.ok(
-    chroma.contrast(DEFAULT_THEME.translation, DEFAULT_THEME.paper) >= 3,
+    chroma.contrast(DEFAULT_THEME.translation, DEFAULT_THEME.paper) >= 2.5,
   );
 });

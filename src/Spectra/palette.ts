@@ -21,7 +21,7 @@ export const DEFAULT_THEME: SpectraTheme = {
   accent: "#e5683f",
   bar: "#3b5357",
   trace: "#4f8f7d",
-  translation: "#4d8f8c",
+  translation: "#c27f6b",
   unplayed: "#d9dad4",
 };
 
@@ -39,9 +39,18 @@ const clamp = (value: number, min: number, max: number) =>
 const hex = (hue: number, saturation: number, lightness: number) =>
   chroma.hsl(((hue % 360) + 360) % 360, saturation, lightness).hex();
 
+/** 在纸色上从浅往深找第一个对比度够用（≥ 2.6）的明度，保证“淡”但仍读得清。 */
+function softTone(hue: number, saturation: number, paper: string): string {
+  for (let lightness = 0.62; lightness > 0.2; lightness -= 0.01) {
+    const color = hex(hue, saturation, lightness);
+    if (chroma.contrast(color, paper) >= 2.6) return color;
+  }
+  return hex(hue, saturation, 0.2);
+}
+
 /**
  * 以封面主色为强调色，围绕它的色相配出其余几色：
- * 纸色、墨色是同一色相的低饱和浅色 / 深色，柱子、低频波形和翻译取互补色。
+ * 纸色、墨色是同一色相的低饱和浅色 / 深色，柱子、低频波形取互补色，翻译沿用强调色的色相。
  */
 export function themeFromAccent({
   hue,
@@ -49,8 +58,9 @@ export function themeFromAccent({
   lightness,
 }: AccentColor): SpectraTheme {
   const complement = hue + 180;
+  const paper = hex(hue, 0.18, 0.91);
   return {
-    paper: hex(hue, 0.18, 0.91),
+    paper,
     ink: hex(hue, 0.14, 0.15),
     inkSoft: hex(hue, 0.06, 0.47),
     // 黄绿色在同样明度下看起来更亮，压低一点才不会在米色底上发虚
@@ -61,7 +71,8 @@ export function themeFromAccent({
     ),
     bar: hex(complement, 0.24, 0.27),
     trace: hex(complement, 0.38, 0.44),
-    translation: hex(complement, 0.34, 0.37),
+    // 翻译跟强调色同一色相，比强调色更淡、更灰，当副文本不抢正文
+    translation: softTone(hue, 0.42, paper),
     unplayed: hex(hue, 0.06, 0.845),
   };
 }

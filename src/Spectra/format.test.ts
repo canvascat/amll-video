@@ -17,7 +17,9 @@ import {
   fitFontSize,
   formatSampleRate,
   frequencyTicks,
+  karaokeGradient,
   lyricEntries,
+  wordProgress,
 } from "./format";
 
 test("时间格式", () => {
@@ -200,4 +202,88 @@ test("长歌词按宽度缩小字号，有下限", () => {
   );
   assert.ok(medium < 14 && medium >= 14 * 0.62);
   assert.equal(fitFontSize("x".repeat(400), 14, 245), 14 * 0.62);
+});
+
+const wordLine = (
+  words: [string, number, number][],
+  extra: Partial<LyricLine> = {},
+): LyricLine => ({
+  startTime: words[0]?.[1] ?? 0,
+  endTime: words[words.length - 1]?.[2] ?? 0,
+  words: words.map(([word, startTime, endTime]) => ({
+    word,
+    startTime,
+    endTime,
+    obscene: false,
+    romanWord: "",
+  })),
+  translatedLyric: "",
+  romanLyric: "",
+  isBG: false,
+  isDuet: false,
+  ...extra,
+});
+
+test("逐字歌词带上每个字的时间，首尾空白被去掉", () => {
+  const [entry] = lyricEntries([
+    wordLine([
+      [" I ", 1000, 1200],
+      ["love ", 1200, 1700],
+      ["you ", 1700, 2400],
+    ]),
+  ]);
+  assert.equal(entry?.text, "I love you");
+  assert.deepEqual(entry?.words, [
+    { text: "I ", startMs: 1000, endMs: 1200 },
+    { text: "love ", startMs: 1200, endMs: 1700 },
+    { text: "you", startMs: 1700, endMs: 2400 },
+  ]);
+});
+
+test("整句只有一个时间的歌词（LRC）不算逐字", () => {
+  const [single] = lyricEntries([wordLine([["整句歌词", 1000, 5000]])]);
+  assert.equal(single?.words, undefined);
+  const [same] = lyricEntries([
+    wordLine([
+      ["a", 1000, 5000],
+      ["b", 1000, 5000],
+    ]),
+  ]);
+  assert.equal(same?.words, undefined);
+});
+
+test("结束时间缺失或不合理时，用下一个字的开始时间补", () => {
+  const [entry] = lyricEntries([
+    wordLine([
+      ["a", 1000, Number.POSITIVE_INFINITY],
+      ["b", 1500, 1500],
+      ["c", 2000, Number.POSITIVE_INFINITY],
+    ]),
+  ]);
+  assert.deepEqual(
+    entry?.words?.map((word) => [word.startMs, word.endMs]),
+    [
+      [1000, 1500],
+      [1500, 2000],
+      [2000, 2400],
+    ],
+  );
+});
+
+test("字的唱到进度在 0 到 1 之间", () => {
+  const word = { text: "a", startMs: 1000, endMs: 2000 };
+  assert.equal(wordProgress(word, 500), 0);
+  assert.equal(wordProgress(word, 1500), 0.5);
+  assert.equal(wordProgress(word, 3000), 1);
+});
+
+test("逐字渐变：0 时全是未唱色，1 时全是已唱色", () => {
+  assert.equal(
+    karaokeGradient(0, "S", "U", 10),
+    "linear-gradient(90deg, S -10.00%, U 0.00%)",
+  );
+  assert.equal(
+    karaokeGradient(1, "S", "U", 10),
+    "linear-gradient(90deg, S 100.00%, U 110.00%)",
+  );
 });

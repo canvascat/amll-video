@@ -21,20 +21,29 @@ nub run export -- <配置.json> --spectra
 
 ## 面板
 
-| 区域                  | 内容                                                 | 数据来源                  |
-| --------------------- | ---------------------------------------------------- | ------------------------- |
-| 顶栏                  | `SPECTRA`、副标题、右上角 `96.0 kHz / 24 BIT`        | 音频文件                  |
-| 01 Record Sleeve      | 封面，橙色角标，缓慢转动的虚线圆环                   | `coverImageUrl`           |
-| Album / Release       | 专辑名、歌手；专辑名缺失时用歌名                     | `albumName`、`artistName` |
-| Year / Track / BPM    | 年份、曲序、BPM，缺项显示 `—`                        | props，或音频标签         |
-| Now Playing           | 歌名、歌手、音质、流派、时长                         | props、音频文件           |
-| 02 Frequency Spectrum | 100 根对数频率柱 + 橙色峰值保持                      | 当前时刻的 FFT            |
-| 低频波形              | 当前位置前后各 0.5 秒的低频波形                      | 采样平均                  |
-| 03 Track Timeline     | 整首歌的响度包络，已播放部分着色，带播放头和时间刻度 | 整首解码                  |
-| 04 Lyrics             | 三行：上一句、当前句、下一句，前后两句渐隐，换句时整体上滚；每句带翻译                      | `lyricLines`              |
-| 技术参数              | 采样率、位深、声道、格式、码率、文件大小             | 音频文件                  |
+| 区域                  | 内容                                                                   | 数据来源                  |
+| --------------------- | ---------------------------------------------------------------------- | ------------------------- |
+| 顶栏                  | `SPECTRA`、副标题、右上角 `96.0 kHz / 24 BIT`                          | 音频文件                  |
+| 01 Record Sleeve      | 封面，橙色角标，缓慢转动的虚线圆环                                     | `coverImageUrl`           |
+| Album / Release       | 专辑名、歌手；专辑名缺失时用歌名                                       | `albumName`、`artistName` |
+| Year / Track / BPM    | 年份、曲序、BPM，缺项显示 `—`                                          | props，或音频标签         |
+| Now Playing           | 歌名、歌手、音质、流派、时长                                           | props、音频文件           |
+| 02 Frequency Spectrum | 100 根对数频率柱 + 橙色峰值保持                                        | 当前时刻的 FFT            |
+| 低频波形              | 当前位置前后各 0.5 秒的低频波形                                        | 采样平均                  |
+| 03 Track Timeline     | 整首歌的响度包络，已播放部分着色，带播放头和时间刻度                   | 整首解码                  |
+| 04 Lyrics             | 三行：上一句、当前句、下一句，前后两句渐隐，换句时整体上滚；每句带翻译 | `lyricLines`              |
+| 技术参数              | 采样率、位深、声道、格式、码率、文件大小                               | 音频文件                  |
 
 缺少的信息（例如 BPM、没有标签的流派）一律显示 `—`，不会编造。
+
+### 逐字歌词
+
+TTML / YRC / QRC / LYS 等带逐字时间的歌词，当前句会按字做卡拉 OK 填充：每个字是一个 span，用 `background-clip: text` 配合一条硬边渐变，随时间从左到右由淡变深。当前句开始时，未唱部分的颜色从“普通歌词灰”平滑过渡到“未唱灰”，所以换句时不会跳变。
+
+- 只有当前句填充；前后两句仍是整行淡显。
+- 一句里至少有 2 个有内容的字、且起始时间不全相同才算逐字，否则（例如 LRC）按整行显示。
+- 字缺结束时间时，取下一个字的起点，最后一个字补 400 ms。
+- 背景人声行（`isBG`）不显示。
 
 ## 频谱怎么算
 
@@ -64,7 +73,7 @@ FFT 用开源库 [fft.js](https://github.com/indutny/fft.js)，加窗、校准�
 
 - 取色用 [node-vibrant](https://github.com/Vibrant-Colors/node-vibrant)（MMCQ 量化）。在 Vibrant / LightVibrant / DarkVibrant 三个色板里挑占比最大且够鲜的一个当强调色；都不够鲜（黑白灰封面）就回到默认的米色 + 橙色。
 - 颜色换算和对比度检查用 [chroma-js](https://github.com/gka/chroma.js)。
-- 配色规则在 `palette.ts`：纸色、墨色、灰字取强调色的色相，饱和度很低；柱子、低频波形、翻译取互补色；黄绿色会压暗一点，保证在浅底上读得清。
+- 配色规则在 `palette.ts`：纸色、墨色、灰字取强调色的色相，饱和度很低；柱子、低频波形取互补色；翻译和强调色同一色相，但更淡（字号 9.5、再降一点不透明度，明度从浅往深找第一个对比度 ≥ 2.6 的值）；黄绿色会压暗一点，保证在浅底上读得清。
 - 颜色通过 CSS 变量 `--sp-*` 挂在舞台根节点上（`themeVars`），组件里只引用 `COLORS`，换封面只换一组变量。
 
 props 可以覆盖：
@@ -80,11 +89,11 @@ props 可以覆盖：
 
 在 `trackSchema`（歌名、歌手、专辑、音频、歌词、封面、偏移等，和 `AMLLPlayer` 相同）之外，多了：
 
-| 属性                                     | 说明                                                       |
-| ---------------------------------------- | ---------------------------------------------------------- |
-| `year` / `trackNumber` / `genre` / `bpm` | 界面里展示；不填时读音频标签 |
-| `audioInfo`                              | 技术参数和响度包络。通常不用填，会自动读取                 |
-| `theme` / `themeFromCover`               | 见上                                                       |
+| 属性                                     | 说明                                       |
+| ---------------------------------------- | ------------------------------------------ |
+| `year` / `trackNumber` / `genre` / `bpm` | 界面里展示；不填时读音频标签               |
+| `audioInfo`                              | 技术参数和响度包络。通常不用填，会自动读取 |
+| `theme` / `themeFromCover`               | 见上                                       |
 
 ## 文件
 
@@ -111,13 +120,13 @@ node --import ./scripts/register-ts.mjs --test src/Spectra/*.test.ts
 
 ## 用到的开源库
 
-| 库 | 用在 |
-| --- | --- |
-| [fft.js](https://github.com/indutny/fft.js) | 频谱的 FFT |
-| [music-metadata](https://github.com/Borewit/music-metadata) | 采样率、位深、格式和标签 |
-| [mediabunny](https://mediabunny.dev/) | 解码音频算响度包络 |
-| [node-vibrant](https://github.com/Vibrant-Colors/node-vibrant) | 封面取主色 |
-| [chroma-js](https://github.com/gka/chroma.js) | 颜色空间换算、对比度 |
+| 库                                                             | 用在                     |
+| -------------------------------------------------------------- | ------------------------ |
+| [fft.js](https://github.com/indutny/fft.js)                    | 频谱的 FFT               |
+| [music-metadata](https://github.com/Borewit/music-metadata)    | 采样率、位深、格式和标签 |
+| [mediabunny](https://mediabunny.dev/)                          | 解码音频算响度包络       |
+| [node-vibrant](https://github.com/Vibrant-Colors/node-vibrant) | 封面取主色               |
+| [chroma-js](https://github.com/gka/chroma.js)                  | 颜色空间换算、对比度     |
 
 Hann 窗、对数频带、dB 换算、响度分桶、低频波形的平均都是几行公式，没有为它们单独引依赖。
 

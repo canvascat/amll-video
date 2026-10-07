@@ -103,7 +103,39 @@ export function amplitudeLabel(db: number): string {
   return `1e${exponent}`;
 }
 
-export type LyricEntry = { startMs: number; text: string; translation: string };
+export type LyricWord = { text: string; startMs: number; endMs: number };
+
+export type LyricEntry = {
+  startMs: number;
+  text: string;
+  translation: string;
+  /** 逐字时间；只有按字 / 词给了时间的歌词才有，整句一个时间的 LRC 是 undefined。 */
+  words?: LyricWord[];
+};
+
+const FALLBACK_WORD_MS = 400;
+
+/** 把一行里的词整理成逐字时间：补上缺失 / 异常的结束时间，去掉首尾空白。 */
+function timedWords(line: LyricLine): LyricWord[] | undefined {
+  const raw = line.words.filter((word) => word.word !== "");
+  if (raw.length < 2) return undefined;
+  const starts = new Set(raw.map((word) => word.startTime));
+  // 所有词同一个开始时间说明只有整句时间，不是逐字
+  if (starts.size < 2) return undefined;
+  const words = raw.map((word, index) => {
+    const next = raw[index + 1];
+    const end =
+      Number.isFinite(word.endTime) && word.endTime > word.startTime
+        ? word.endTime
+        : (next?.startTime ?? word.startTime + FALLBACK_WORD_MS);
+    return { text: word.word, startMs: word.startTime, endMs: end };
+  });
+  const first = words[0] as LyricWord;
+  const last = words[words.length - 1] as LyricWord;
+  first.text = first.text.trimStart();
+  last.text = last.text.trimEnd();
+  return words.filter((word) => word.text !== "");
+}
 
 export function lyricEntries(lines: readonly LyricLine[]): LyricEntry[] {
   return lines
@@ -115,9 +147,30 @@ export function lyricEntries(lines: readonly LyricLine[]): LyricEntry[] {
         .join("")
         .trim(),
       translation: (line.translatedLyric || line.romanLyric || "").trim(),
+      words: timedWords(line),
     }))
     .filter((entry) => entry.text !== "")
     .sort((a, b) => a.startMs - b.startMs);
+}
+
+/** 一个词唱到了多少：0（还没唱）到 1（唱完）。 */
+export function wordProgress(word: LyricWord, timeMs: number): number {
+  const span = Math.max(1, word.endMs - word.startMs);
+  return Math.max(0, Math.min(1, (timeMs - word.startMs) / span));
+}
+
+/**
+ * 逐字高亮用的渐变：左边已唱的颜色、右边未唱的颜色，中间留一小段柔和过渡。
+ * progress=0 时整个词都是未唱色，=1 时整个词都是已唱色。
+ */
+export function karaokeGradient(
+  progress: number,
+  sung: string,
+  unsung: string,
+  soft = 10,
+): string {
+  const edge = progress * (100 + soft);
+  return `linear-gradient(90deg, ${sung} ${(edge - soft).toFixed(2)}%, ${unsung} ${edge.toFixed(2)}%)`;
 }
 
 /** 当前正在唱的是第几句：最后一句 startMs <= 当前时间的歌词，没开始唱时是 -1。 */

@@ -50,7 +50,7 @@ export const defaultPlaylistProps: PlaylistCompositionProps = {
 
 export const defaultPlayerProps: PlayerCompositionProps = defaultTrack;
 
-export const defaultSpectraProps: SpectraCompositionProps = trackFromPrepared(tiehe);
+export const defaultSpectraProps: SpectraCompositionProps = trackFromPrepared(oneLastKiss);
 
 export const defaultAlbumProps: AlbumCompositionProps = {
   audioFileUrl: defaultTrack.audioFileUrl,
