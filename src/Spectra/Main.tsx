@@ -34,6 +34,7 @@ import {
   COLORS,
   FONT_MONO,
   FONT_SANS,
+  PLOT,
   STAGE_HEIGHT,
   STAGE_WIDTH,
   at,
@@ -154,6 +155,9 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
       })
     : null;
   const entries = useMemo(() => lyricEntries(lyricLines), [lyricLines]);
+  // 没有歌词时不画歌词区，标题区延伸到频谱图的右缘。
+  const hasLyrics = entries.length > 0;
+  const nowWidth = hasLyrics ? 312 : PLOT.x + PLOT.width - 373;
 
   const artistLine = artistName.trim();
   const albumLine = albumName.trim() || songName.trim();
@@ -379,7 +383,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
             position: "absolute",
             left: 373,
             top: 86,
-            width: 312,
+            width: nowWidth,
             fontSize: 20,
             lineHeight: "26px",
             fontWeight: 400,
@@ -396,7 +400,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
             position: "absolute",
             left: 373,
             top: 121,
-            width: 312,
+            width: nowWidth,
             fontSize: 12,
             lineHeight: "18px",
             color: "var(--sp-ink-soft)",
@@ -409,7 +413,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
         </Interactive.Div>
         <div
           style={at(373, 146, {
-            width: 312,
+            width: nowWidth,
             height: 0.5,
             backgroundColor: COLORS.rule,
           })}
@@ -422,32 +426,36 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
           value={formatQuality(audioInfo?.sampleRate, audioInfo?.bitDepth)}
         />
         <Stat
-          x={517}
+          x={hasLyrics ? 517 : 575}
           y={156}
           mono={false}
           label="Genre"
           value={genre?.trim() || "—"}
         />
         <Stat
-          x={629}
+          x={hasLyrics ? 629 : 777}
           y={156}
           mono={false}
           label="Duration"
           value={`${String(Math.floor(trackSeconds / 60)).padStart(2, "0")}:${String(Math.floor(trackSeconds % 60)).padStart(2, "0")}`}
         />
-        <div
-          style={at(698, 64, {
-            width: 0.5,
-            height: 118,
-            backgroundColor: COLORS.rule,
-          })}
-        />
+        {hasLyrics ? (
+          <div
+            style={at(698, 64, {
+              width: 0.5,
+              height: 118,
+              backgroundColor: COLORS.rule,
+            })}
+          />
+        ) : null}
 
-        <LyricsPanel
-          entries={entries}
-          timeMs={audioSeconds * 1000}
-          frame={frame}
-        />
+        {hasLyrics ? (
+          <LyricsPanel
+            entries={entries}
+            timeMs={audioSeconds * 1000}
+            frame={frame}
+          />
+        ) : null}
         <SpectrumPanel live={live} maxHz={sampleRate / 2} />
         <ScopePanel trace={trace} />
         <TimelinePanel
