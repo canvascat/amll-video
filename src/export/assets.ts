@@ -60,7 +60,12 @@ function jsonSafeLyricLines(lines: LyricLine[]): LyricLine[] {
 }
 
 type MaterializedTrack = {
-  track: TrackProps;
+  track: TrackProps & {
+    turntable?: boolean;
+    composer?: string;
+    year?: number;
+    genre?: string;
+  };
   sourceAudio: ConcatAudioInput;
   durationInFrames: number;
 };
@@ -156,6 +161,10 @@ async function materializeTrack(options: {
       durationInSeconds: endSec,
       lyricOffsetMs: track.lyricOffsetMs,
       lyricLines: jsonSafeLyricLines(lyricLines),
+      ...(track.turntable ? { turntable: true } : {}),
+      ...(track.composer ? { composer: track.composer } : {}),
+      ...(track.year ? { year: track.year } : {}),
+      ...(track.genre ? { genre: track.genre } : {}),
     },
     sourceAudio: {
       path: track.audioPath,

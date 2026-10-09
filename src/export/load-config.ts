@@ -14,6 +14,10 @@ export type ConfigTrack = {
   title?: string;
   artist?: string;
   album?: string;
+  turntable?: boolean;
+  composer?: string;
+  year?: number;
+  genre?: string;
 };
 
 export type LoadedConfig = {
@@ -101,6 +105,10 @@ function readTrack(
     title: asString(raw.songName) || undefined,
     artist: asString(raw.artistName) || defaults?.artistName || undefined,
     album: asString(raw.albumName) || defaults?.albumName || undefined,
+    turntable: raw.turntable === true ? true : undefined,
+    composer: asString(raw.composer).trim() || undefined,
+    year: asFiniteNumber(raw.year),
+    genre: asString(raw.genre).trim() || undefined,
   };
 }
 
