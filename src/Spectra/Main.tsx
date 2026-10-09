@@ -7,6 +7,7 @@ import {
   Interactive,
   Sequence,
   getRemotionEnvironment,
+  Easing,
   interpolate,
   useCurrentFrame,
   useVideoConfig,
@@ -50,6 +51,86 @@ const COVER_CENTER = {
   y: COVER.y + COVER.size / 2,
 };
 const SPEC_COLUMNS = [373, 474, 575, 676, 777, 878];
+const DISC_R = 132;
+const LABEL_R = 46;
+const PLINTH = { x: 31, y: 107, width: 300, height: 300 } as const;
+const VINYL_GROOVE_START = LABEL_R + 14;
+const VINYL_GROOVE_END = DISC_R - 6;
+const VINYL_GROOVES = Array.from({ length: 46 }, (_, index) => {
+  return (
+    VINYL_GROOVE_START + ((VINYL_GROOVE_END - VINYL_GROOVE_START) * index) / 45
+  );
+});
+const RUNOUT = [LABEL_R + 4.5, LABEL_R + 8, LABEL_R + 11.5];
+
+const discSector = (start: number, end: number): string => {
+  const radius = DISC_R - 0.5;
+  const x0 = DISC_R + radius * Math.cos(start);
+  const y0 = DISC_R + radius * Math.sin(start);
+  const x1 = DISC_R + radius * Math.cos(end);
+  const y1 = DISC_R + radius * Math.sin(end);
+  const large = end - start > Math.PI ? 1 : 0;
+  return `M ${DISC_R} ${DISC_R} L ${x0.toFixed(2)} ${y0.toFixed(2)} A ${radius} ${radius} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`;
+};
+
+const ARM_REST = 54;
+const armEasing = Easing.bezier(0.55, 0.05, 0.25, 1);
+
+/** 开头从搁架落入纹路，结束前再抬回去。中间保持播放角度。 */
+const armAngle = (
+  frame: number,
+  fps: number,
+  durationInFrames: number,
+): number => {
+  const drop = interpolate(frame, [0.45 * fps, 1.5 * fps], [ARM_REST, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: armEasing,
+  });
+  const lift = interpolate(
+    frame,
+    [durationInFrames - 1.5 * fps, durationInFrames - 0.45 * fps],
+    [0, ARM_REST],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: armEasing,
+    },
+  );
+  return Math.max(drop, lift);
+};
+
+/** 落下后匀加速到每 8 秒一圈，结束前再匀减速到停止。 */
+const discAngle = (
+  frame: number,
+  fps: number,
+  durationInFrames: number,
+): number => {
+  const spinStart = 1.15 * fps;
+  const spinRamp = 0.55 * fps;
+  const degreesPerFrame = 360 / (fps * 8);
+  const cruise = (at: number) => {
+    const spun = Math.max(0, at - spinStart);
+    if (spun <= spinRamp) {
+      return (degreesPerFrame * spun * spun) / (2 * spinRamp);
+    }
+    return degreesPerFrame * (spinRamp / 2 + (spun - spinRamp));
+  };
+  const spinStop = durationInFrames - 1.7 * fps;
+  if (frame <= spinStop || spinStop <= spinStart + spinRamp) {
+    return cruise(frame);
+  }
+  const intoStop = frame - spinStop;
+  const base = cruise(spinStop);
+  if (intoStop >= spinRamp) {
+    return base + (degreesPerFrame * spinRamp) / 2;
+  }
+  return (
+    base +
+    degreesPerFrame * intoStop -
+    (degreesPerFrame * intoStop * intoStop) / (2 * spinRamp)
+  );
+};
 
 const Corner: React.FC<{
   x: number;
@@ -119,6 +200,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
   composer,
   audioInfo,
   theme,
+  turntable = false,
 }) => {
   const frame = useCurrentFrame();
   const { fps, width, height, durationInFrames } = useVideoConfig();
@@ -238,91 +320,321 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
           })}
         />
 
-        {/* 01 唱片封面 */}
-        <svg
-          width={STAGE_WIDTH}
-          height={STAGE_HEIGHT}
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            pointerEvents: "none",
-          }}
-        >
-          <g
-            style={{
-              transformOrigin: `${COVER_CENTER.x}px ${COVER_CENTER.y}px`,
-              rotate: `${interpolate(frame, [0, 900], [0, 12])}deg`,
-            }}
-          >
-            <circle
-              cx={COVER_CENTER.x}
-              cy={COVER_CENTER.y}
-              r={196}
-              fill="none"
-              stroke="color-mix(in srgb, var(--sp-ink) 34%, transparent)"
-              strokeWidth={0.8}
-              strokeDasharray="0.6 6.4"
-              strokeLinecap="round"
+        {turntable ? (
+          <>
+            {/* 01 唱盘：浅色木纹托盘退后，黑胶和嵌在中心的封面一起转，唱臂搁在纹路上 */}
+            <div style={at(42, 87, labelStyle)}>01 / Turntable</div>
+            <div
+              style={at(42, 99, {
+                width: 20,
+                height: 1.5,
+                backgroundColor: COLORS.accent,
+              })}
             />
-          </g>
-          <circle
-            cx={COVER_CENTER.x}
-            cy={COVER_CENTER.y}
-            r={222}
-            fill="none"
-            stroke="color-mix(in srgb, var(--sp-ink) 7%, transparent)"
-            strokeWidth={0.6}
-          />
-          <circle
-            cx={COVER_CENTER.x}
-            cy={COVER_CENTER.y}
-            r={168}
-            fill="none"
-            stroke="color-mix(in srgb, var(--sp-ink) 7%, transparent)"
-            strokeWidth={0.6}
-          />
-        </svg>
-        <div style={at(42, 87, labelStyle)}>01 / Record Sleeve</div>
-        <div
-          style={at(42, 99, {
-            width: 20,
-            height: 1.5,
-            backgroundColor: COLORS.accent,
-          })}
-        />
-        <div
-          style={at(COVER.x, COVER.y, {
-            width: COVER.size,
-            height: COVER.size,
-            backgroundColor:
-              "color-mix(in srgb, var(--sp-ink) 12%, var(--sp-paper))",
-            boxShadow:
-              "0 10px 26px color-mix(in srgb, var(--sp-ink) 22%, transparent), 0 2px 5px color-mix(in srgb, var(--sp-ink) 18%, transparent)",
-          })}
-        >
-          {coverSrc ? (
-            <Img
-              name="Cover"
-              src={coverSrc}
+            <div
+              style={at(PLINTH.x, PLINTH.y, {
+                width: PLINTH.width,
+                height: PLINTH.height,
+                borderRadius: 18,
+                backgroundColor:
+                  "color-mix(in srgb, #8a6848 14%, var(--sp-paper))",
+                backgroundImage:
+                  "repeating-linear-gradient(96deg, rgba(92,60,34,0.05) 0 1px, transparent 1px 8px), repeating-linear-gradient(180deg, rgba(70,44,24,0.045) 0 1px, transparent 1px 10px)",
+                boxShadow:
+                  "0 8px 14px color-mix(in srgb, var(--sp-ink) 8%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--sp-ink) 7%, transparent)",
+              })}
+            />
+            <div
+              style={at(
+                COVER_CENTER.x - DISC_R - 4,
+                COVER_CENTER.y - DISC_R - 4,
+                {
+                  width: (DISC_R + 4) * 2,
+                  height: (DISC_R + 4) * 2,
+                  borderRadius: "50%",
+                  backgroundColor: "#3e4348",
+                  boxShadow:
+                    "0 10px 16px color-mix(in srgb, var(--sp-ink) 16%, transparent), inset 0 0 0 1px rgba(255,255,255,0.16)",
+                },
+              )}
+            />
+            <div
+              style={at(COVER_CENTER.x - DISC_R, COVER_CENTER.y - DISC_R, {
+                width: DISC_R * 2,
+                height: DISC_R * 2,
+                borderRadius: "50%",
+                overflow: "hidden",
+                backgroundColor: "#070809",
+                backgroundImage:
+                  "radial-gradient(circle at 50% 44%, #121418 0%, #070809 42%, #040506 100%)",
+                boxShadow: "inset 0 0 10px rgba(0,0,0,0.55)",
+                rotate: `${discAngle(frame, fps, durationInFrames)}deg`,
+              })}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  left: DISC_R - LABEL_R,
+                  top: DISC_R - LABEL_R,
+                  width: LABEL_R * 2,
+                  height: LABEL_R * 2,
+                  borderRadius: "50%",
+                  overflow: "hidden",
+                  backgroundColor:
+                    "color-mix(in srgb, var(--sp-ink) 12%, var(--sp-paper))",
+                  boxShadow:
+                    "0 0 0 0.6px rgba(0,0,0,0.55), inset 0 0 0 0.6px rgba(255,255,255,0.28)",
+                }}
+              >
+                {coverSrc ? (
+                  <Img
+                    name="Cover"
+                    src={coverSrc}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                ) : null}
+              </div>
+              <div
+                style={{
+                  position: "absolute",
+                  left: DISC_R - 4,
+                  top: DISC_R - 4,
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  backgroundColor: "#050607",
+                  boxShadow:
+                    "inset 0 1px 1px rgba(0,0,0,0.8), 0 0 0 0.7px #b7a48a, 0 0 0 1.6px rgba(0,0,0,0.55)",
+                }}
+              />
+            </div>
+            <svg
+              width={DISC_R * 2}
+              height={DISC_R * 2}
+              style={at(COVER_CENTER.x - DISC_R, COVER_CENTER.y - DISC_R, {
+                pointerEvents: "none",
+              })}
+            >
+              <defs>
+                <mask id="spectra-vinyl-grooves">
+                  <rect width={DISC_R * 2} height={DISC_R * 2} fill="black" />
+                  {VINYL_GROOVES.map((radius, index) => (
+                    <circle
+                      key={index}
+                      cx={DISC_R}
+                      cy={DISC_R}
+                      r={radius}
+                      fill="none"
+                      stroke="white"
+                      strokeWidth={0.45}
+                    />
+                  ))}
+                  {RUNOUT.map((radius) => (
+                    <circle
+                      key={radius}
+                      cx={DISC_R}
+                      cy={DISC_R}
+                      r={radius}
+                      fill="none"
+                      stroke="white"
+                      strokeWidth={0.6}
+                    />
+                  ))}
+                </mask>
+                <filter
+                  id="spectra-vinyl-falloff"
+                  x="-20%"
+                  y="-20%"
+                  width="140%"
+                  height="140%"
+                >
+                  <feGaussianBlur stdDeviation="7" />
+                </filter>
+              </defs>
+              {VINYL_GROOVES.map((radius, index) => (
+                <circle
+                  key={index}
+                  cx={DISC_R}
+                  cy={DISC_R}
+                  r={radius}
+                  fill="none"
+                  stroke={`rgba(210,214,220,${(0.1 + 0.1 * (0.5 + 0.5 * Math.sin(index * 0.7))).toFixed(3)})`}
+                  strokeWidth={0.5}
+                />
+              ))}
+              {RUNOUT.map((radius) => (
+                <circle
+                  key={radius}
+                  cx={DISC_R}
+                  cy={DISC_R}
+                  r={radius}
+                  fill="none"
+                  stroke="rgba(214,218,224,0.22)"
+                  strokeWidth={0.55}
+                />
+              ))}
+              <g
+                filter="url(#spectra-vinyl-falloff)"
+                mask="url(#spectra-vinyl-grooves)"
+              >
+                <path
+                  d={discSector(-2.25, -1.42)}
+                  fill="rgba(255,255,255,0.28)"
+                />
+                <path
+                  d={discSector(-2.05, -1.62)}
+                  fill="rgba(255,255,255,0.55)"
+                />
+                <path d={discSector(-1.92, -1.74)} fill="white" />
+                <path
+                  d={discSector(0.95, 1.45)}
+                  fill="rgba(255,255,255,0.34)"
+                />
+              </g>
+              <circle
+                cx={DISC_R}
+                cy={DISC_R}
+                r={DISC_R - 3.2}
+                fill="none"
+                stroke="#070809"
+                strokeWidth={4.6}
+              />
+            </svg>
+            <svg
+              width={STAGE_WIDTH}
+              height={STAGE_HEIGHT}
               style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
+                position: "absolute",
+                left: 0,
+                top: 0,
+                pointerEvents: "none",
               }}
+            >
+              <line
+                x1={318}
+                y1={120}
+                x2={306}
+                y2={134}
+                stroke="#1c1e20"
+                strokeWidth={6}
+                strokeLinecap="round"
+              />
+              <circle cx={306} cy={134} r={7} fill="#2c2e31" />
+              <circle cx={306} cy={134} r={2.6} fill="#8d9094" />
+              <g
+                transform={`rotate(${armAngle(frame, fps, durationInFrames)} 306 134)`}
+              >
+                <path
+                  d="M 306 134 C 328 162, 296 168, 262 186"
+                  fill="none"
+                  stroke="#242628"
+                  strokeWidth={2.6}
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M 276 172 L 260 188"
+                  fill="none"
+                  stroke="#141618"
+                  strokeWidth={6.5}
+                  strokeLinecap="round"
+                />
+                <circle cx={258} cy={190} r={2.2} fill="#e4ddd0" />
+              </g>
+            </svg>
+          </>
+        ) : (
+          <>
+            <svg
+              width={STAGE_WIDTH}
+              height={STAGE_HEIGHT}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                pointerEvents: "none",
+              }}
+            >
+              <g
+                style={{
+                  transformOrigin: `${COVER_CENTER.x}px ${COVER_CENTER.y}px`,
+                  rotate: `${interpolate(frame, [0, 900], [0, 12])}deg`,
+                }}
+              >
+                <circle
+                  cx={COVER_CENTER.x}
+                  cy={COVER_CENTER.y}
+                  r={196}
+                  fill="none"
+                  stroke="color-mix(in srgb, var(--sp-ink) 34%, transparent)"
+                  strokeWidth={0.8}
+                  strokeDasharray="0.6 6.4"
+                  strokeLinecap="round"
+                />
+              </g>
+              <circle
+                cx={COVER_CENTER.x}
+                cy={COVER_CENTER.y}
+                r={222}
+                fill="none"
+                stroke="color-mix(in srgb, var(--sp-ink) 7%, transparent)"
+                strokeWidth={0.6}
+              />
+              <circle
+                cx={COVER_CENTER.x}
+                cy={COVER_CENTER.y}
+                r={168}
+                fill="none"
+                stroke="color-mix(in srgb, var(--sp-ink) 7%, transparent)"
+                strokeWidth={0.6}
+              />
+            </svg>
+            <div style={at(42, 87, labelStyle)}>01 / Record Sleeve</div>
+            <div
+              style={at(42, 99, {
+                width: 20,
+                height: 1.5,
+                backgroundColor: COLORS.accent,
+              })}
             />
-          ) : null}
-        </div>
-        <Corner x={COVER.x - 3} y={COVER.y - 3} />
-        <Corner x={COVER.x + COVER.size - 8} y={COVER.y - 3} flipX />
-        <Corner x={COVER.x - 3} y={COVER.y + COVER.size - 8} flipY />
-        <Corner
-          x={COVER.x + COVER.size - 8}
-          y={COVER.y + COVER.size - 8}
-          flipX
-          flipY
-        />
+            <div
+              style={at(COVER.x, COVER.y, {
+                width: COVER.size,
+                height: COVER.size,
+                backgroundColor:
+                  "color-mix(in srgb, var(--sp-ink) 12%, var(--sp-paper))",
+                boxShadow:
+                  "0 10px 26px color-mix(in srgb, var(--sp-ink) 22%, transparent), 0 2px 5px color-mix(in srgb, var(--sp-ink) 18%, transparent)",
+              })}
+            >
+              {coverSrc ? (
+                <Img
+                  name="Cover"
+                  src={coverSrc}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                />
+              ) : null}
+            </div>
+            <Corner x={COVER.x - 3} y={COVER.y - 3} />
+            <Corner x={COVER.x + COVER.size - 8} y={COVER.y - 3} flipX />
+            <Corner x={COVER.x - 3} y={COVER.y + COVER.size - 8} flipY />
+            <Corner
+              x={COVER.x + COVER.size - 8}
+              y={COVER.y + COVER.size - 8}
+              flipX
+              flipY
+            />
+          </>
+        )}
 
         <div style={at(42, 414, labelStyle)}>Album / Release</div>
         <Interactive.Div

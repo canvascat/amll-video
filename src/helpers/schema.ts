@@ -51,6 +51,8 @@ export const spectraCompositionSchema = trackSchema.extend({
   theme: spectraThemeSchema.optional(),
   /** 设为 false 时不从封面取色，固定用默认的米色 + 橙色。 */
   themeFromCover: z.boolean().optional(),
+  /** 为 true 时左边换成唱机：开头唱臂落下、结束抬起。默认是方形封面。 */
+  turntable: z.boolean().optional(),
 });
 
 export const albumTrackSchema = z.object({

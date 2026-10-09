@@ -3,7 +3,7 @@
 Music Lyrics Video Factory。用 Remotion 做 1920×1080 的歌词视频，Studio 里有四套画面：
 
 - `AMLLPlayer`：一首歌。动态 Mesh 背景，左侧封面和曲目信息，右侧滚动歌词。
-- `SpectraPlayer`：一首歌，换成米色频谱仪面板：封面、正在播放、实时频谱（20 Hz 到奈奎斯特，dBFS 刻度）、低频波形、曲目时间轴、当前句歌词和翻译，以及底部的采样率 / 位深 / 声道 / 格式 / 码率 / 文件大小。技术参数和时间轴包络在 `calculateMetadata` 里从音频文件读出，读不到的项显示 `—`。配色默认从封面自动取色（强调色取封面最鲜的主色，纸色 / 墨色跟着它的色相走，柱子和波形取互补色）；props 里传 `theme` 可以手动指定，`themeFromCover: false` 则固定用米色 + 橙色。
+- `SpectraPlayer`：一首歌，换成米色频谱仪面板：封面、正在播放、实时频谱（20 Hz 到奈奎斯特，dBFS 刻度）、低频波形、曲目时间轴、当前句歌词和翻译，以及底部的采样率 / 位深 / 声道 / 格式 / 码率 / 文件大小。没有歌词时不显示歌词区。技术参数和时间轴包络在 `calculateMetadata` 里从音频文件读出，读不到的项显示 `—`。配色默认从封面自动取色（强调色取封面最鲜的主色，纸色 / 墨色跟着它的色相走，柱子和波形取互补色）；props 里传 `theme` 可以手动指定，`themeFromCover: false` 则固定用米色 + 橙色。左边默认是方形封面；`turntable: true` 换成唱机，开头唱臂落入、结束抬起，封面嵌在唱片中心。细节见 [`src/Spectra/README.md`](src/Spectra/README.md)。
 - `AlbumPlayer`：一张整轨。毛玻璃封面，按时间切歌名，不滚动歌词。
 - `PlaylistPlayer`：一份歌单。海报墙铺开，当前这首展开并显示当前句歌词和波形，切歌时镜头飞到下一张。
 
@@ -19,7 +19,7 @@ nub install
 
 系统需要能调用 `ffmpeg`（没有的话会回退到 `nubx remotion ffmpeg`）。WebGL 背景建议本机装有 Chrome。
 
-把音频和歌词放到 `public/`。`AMLLPlayer` 和 `AlbumPlayer` 默认是 `OneLastKiss`；`SpectraPlayer` 默认是 `周杰伦 - 半岛铁盒`；`PlaylistPlayer` 默认把这两首接在一起。歌词支持 `.lrc` / `.ttml` / `.yrc` / `.qrc` / `.lys`。
+把音频和歌词放到 `public/`。`AMLLPlayer`、`AlbumPlayer` 和 `SpectraPlayer` 默认都是 `OneLastKiss`；`PlaylistPlayer` 默认把 `OneLastKiss` 和 `周杰伦 - 半岛铁盒` 接在一起。歌词支持 `.lrc` / `.ttml` / `.yrc` / `.qrc` / `.lys`。
 
 只有音频、缺歌词或封面时，可先备料。备料会先把音轨和同目录封面、歌词拷到项目根目录 `预处理/<源目录名>/`，再联网匹配并写出 json。单曲还会写出同名 `.txt`（视频标题和简介）。说明见 [`src/prepare/README.md`](src/prepare/README.md)。
 
@@ -99,23 +99,23 @@ nub src/export/cli.ts --config <配置.json>
 
 默认输出 `out/<歌名或专辑名>.mkv`。整轨还会在旁边写出同名 `.chapters.txt`（`时:分:秒 歌名`）。可选参数：
 
-| 参数 | 说明 |
-| --- | --- |
-| `--config` | 配置文件；也可直接作为位置参数 |
-| `--out` | 输出路径；若写成 `.mp4` 会改成 `.mkv` |
-| `--fps` | 帧率，默认 30 |
-| `--frames` | 只渲染部分帧，例如 `0-2`（调试）。整轨带上它会改回逐帧渲染 |
-| `--concurrency` | 并行渲染路数，数字或 `50%`；默认 1 路。开太高歌词会闪 |
-| `--preview` | 打开 Studio，不导出 |
-| `--background` | AMLLPlayer 背景：`slow`（默认，一半速度）、`static`（静止）、`normal`（原来的速度）。专辑会忽略 |
-| `--spectra` | 单曲改用 `SpectraPlayer`，不能和 `--album`、`--playlist`、`.cue` 一起用 |
-| `--album` | 用 `AlbumPlayer`。直接传入 `.cue` 时自动开启，不需要歌词 |
-| `--playlist` | 用 `PlaylistPlayer` 导出网易云歌单。传入歌单链接或 ID 时自动开启；传 `export.json` 时需要显式加上 |
-| `--server` | music-dl web 地址，只用于歌单下载 |
-| `--refresh` | 重新下载歌单音频，默认复用 `tmp/mdl/<歌单ID>` 里已有的；歌词每次都会重新取 |
-| `--prepare-only` | 只下载并整理歌单素材、写出 `export.json`，不渲染 |
-| `--srt` | 只为整轨 `.cue` 写出字幕：按曲目起点拼接，不写入偏移，并在终端列出疑似偏移。默认写在 cue 旁边的同名 `.srt` |
-| `-h` | 打印帮助 |
+| 参数             | 说明                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------- |
+| `--config`       | 配置文件；也可直接作为位置参数                                                                             |
+| `--out`          | 输出路径；若写成 `.mp4` 会改成 `.mkv`                                                                      |
+| `--fps`          | 帧率，默认 30                                                                                              |
+| `--frames`       | 只渲染部分帧，例如 `0-2`（调试）。整轨带上它会改回逐帧渲染                                                 |
+| `--concurrency`  | 并行渲染路数，数字或 `50%`；默认 1 路。开太高歌词会闪                                                      |
+| `--preview`      | 打开 Studio，不导出                                                                                        |
+| `--background`   | AMLLPlayer 背景：`slow`（默认，一半速度）、`static`（静止）、`normal`（原来的速度）。专辑会忽略            |
+| `--spectra`      | 单曲改用 `SpectraPlayer`，不能和 `--album`、`--playlist`、`.cue` 一起用                                    |
+| `--album`        | 用 `AlbumPlayer`。直接传入 `.cue` 时自动开启，不需要歌词                                                   |
+| `--playlist`     | 用 `PlaylistPlayer` 导出网易云歌单。传入歌单链接或 ID 时自动开启；传 `export.json` 时需要显式加上          |
+| `--server`       | music-dl web 地址，只用于歌单下载                                                                          |
+| `--refresh`      | 重新下载歌单音频，默认复用 `tmp/mdl/<歌单ID>` 里已有的；歌词每次都会重新取                                 |
+| `--prepare-only` | 只下载并整理歌单素材、写出 `export.json`，不渲染                                                           |
+| `--srt`          | 只为整轨 `.cue` 写出字幕：按曲目起点拼接，不写入偏移，并在终端列出疑似偏移。默认写在 cue 旁边的同名 `.srt` |
+| `-h`             | 打印帮助                                                                                                   |
 
 ## 运行流程
 
