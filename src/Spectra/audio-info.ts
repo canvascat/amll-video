@@ -18,6 +18,7 @@ export type SpectraTags = {
   trackNumber?: number;
   genre?: string;
   bpm?: number;
+  composer?: string;
 };
 
 export const TIMELINE_BAR_COUNT = 300;
@@ -62,6 +63,11 @@ export function infoFromMetadata(
   const genre = common.genre?.[0];
   if (genre) tags.genre = genre;
   if (common.bpm) tags.bpm = Math.round(common.bpm);
+  const composer = [common.composer]
+    .flat()
+    .filter((name): name is string => Boolean(name?.trim()))
+    .join(", ");
+  if (composer) tags.composer = composer;
   return { info, tags };
 }
 

@@ -29,6 +29,8 @@ import { ScopePanel } from "./Scope";
 import { BAR_COUNT, SpectrumPanel } from "./Spectrum";
 import { spectrumFrame } from "./analysis";
 import { TimelinePanel } from "./Timeline";
+import { ensureCjkSerif, FONT_SERIF } from "./fonts";
+import { splitWorkTitle } from "./program";
 import { lowBandTrace } from "./trace";
 import {
   COLORS,
@@ -79,16 +81,20 @@ const Stat: React.FC<{
   label: string;
   value: string;
   mono?: boolean;
-}> = ({ x, y, label, value, mono = true }) => (
+  width?: number;
+}> = ({ x, y, label, value, mono = true, width }) => (
   <>
     <div style={at(x, y, labelStyle)}>{label}</div>
     <div
       style={at(x, y + 10, {
         fontFamily: mono ? FONT_MONO : FONT_SANS,
+        width,
         fontSize: mono ? 9 : 10,
         lineHeight: "12px",
         color: COLORS.ink,
         whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
       })}
     >
       {value}
@@ -110,6 +116,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
   trackNumber,
   genre,
   bpm,
+  composer,
   audioInfo,
   theme,
 }) => {
@@ -159,6 +166,9 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
   const hasLyrics = entries.length > 0;
   const nowWidth = hasLyrics ? 312 : PLOT.x + PLOT.width - 373;
 
+  const program = splitWorkTitle(songName);
+  if (program) ensureCjkSerif(`${program.work} ${program.movement}`);
+  const tempo = bpm ? "" : (program?.tempo ?? "");
   const artistLine = artistName.trim();
   const albumLine = albumName.trim() || songName.trim();
   const sampleRateText =
@@ -208,7 +218,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
         >
           SPECTRA
         </div>
-        <div style={at(150, 26, labelStyle)}>A personal listening room</div>
+        <div style={at(150, 26, labelStyle)}>Measured listening</div>
         <div
           style={at(780, 25, {
             ...labelStyle,
@@ -358,7 +368,13 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
           label="Track"
           value={trackNumber ? String(trackNumber) : "—"}
         />
-        <Stat x={249} y={492} label="BPM" value={bpm ? String(bpm) : "—"} />
+        <Stat
+          x={tempo ? 188 : 249}
+          y={492}
+          label={tempo ? "Tempo" : "BPM"}
+          value={bpm ? String(bpm) : tempo || "—"}
+          width={tempo ? 134 : undefined}
+        />
         <div
           style={at(42, 523, {
             width: 280,
@@ -377,29 +393,83 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
           })}
         />
         <div style={at(383, 67, labelStyle)}>Now playing / Source master</div>
-        <Interactive.Div
-          name="Song name"
-          style={{
-            position: "absolute",
-            left: 373,
-            top: 86,
-            width: nowWidth,
-            fontSize: 20,
-            lineHeight: "26px",
-            fontWeight: 400,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {songName}
-        </Interactive.Div>
+        {program && composer?.trim() ? (
+          <div
+            style={at(373, 80, {
+              ...labelStyle,
+              width: nowWidth,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            })}
+          >
+            {composer.trim()}
+          </div>
+        ) : null}
+        {program ? (
+          <Interactive.Div
+            name="Work"
+            style={{
+              position: "absolute",
+              left: 373,
+              top: composer?.trim() ? 92 : 82,
+              width: nowWidth,
+              fontFamily: FONT_SERIF,
+              fontSize: 17,
+              lineHeight: "21px",
+              fontWeight: 500,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {program.work}
+          </Interactive.Div>
+        ) : (
+          <Interactive.Div
+            name="Song name"
+            style={{
+              position: "absolute",
+              left: 373,
+              top: 86,
+              width: nowWidth,
+              fontSize: 20,
+              lineHeight: "26px",
+              fontWeight: 400,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {songName}
+          </Interactive.Div>
+        )}
+        {program ? (
+          <Interactive.Div
+            name="Movement"
+            style={{
+              position: "absolute",
+              left: 373,
+              top: composer?.trim() ? 114 : 104,
+              width: nowWidth,
+              fontFamily: FONT_SERIF,
+              fontSize: 13,
+              lineHeight: "17px",
+              fontStyle: "italic",
+              fontWeight: 400,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {program.movement}
+          </Interactive.Div>
+        ) : null}
         <Interactive.Div
           name="Artist"
           style={{
             position: "absolute",
             left: 373,
-            top: 121,
+            top: program ? (composer?.trim() ? 132 : 122) : 121,
             width: nowWidth,
             fontSize: 12,
             lineHeight: "18px",
@@ -412,7 +482,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
           {artistLine}
         </Interactive.Div>
         <div
-          style={at(373, 146, {
+          style={at(373, program ? (composer?.trim() ? 152 : 142) : 146, {
             width: nowWidth,
             height: 0.5,
             backgroundColor: COLORS.rule,
@@ -420,21 +490,21 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
         />
         <Stat
           x={373}
-          y={156}
+          y={program ? (composer?.trim() ? 162 : 152) : 156}
           mono={false}
           label="Quality"
           value={formatQuality(audioInfo?.sampleRate, audioInfo?.bitDepth)}
         />
         <Stat
           x={hasLyrics ? 517 : 575}
-          y={156}
+          y={program ? (composer?.trim() ? 162 : 152) : 156}
           mono={false}
           label="Genre"
           value={genre?.trim() || "—"}
         />
         <Stat
           x={hasLyrics ? 629 : 777}
-          y={156}
+          y={program ? (composer?.trim() ? 162 : 152) : 156}
           mono={false}
           label="Duration"
           value={`${String(Math.floor(trackSeconds / 60)).padStart(2, "0")}:${String(Math.floor(trackSeconds % 60)).padStart(2, "0")}`}
@@ -542,7 +612,7 @@ export const SpectraPlayer: React.FC<SpectraCompositionProps> = ({
             textAlign: "right",
           })}
         >
-          {`${width} × ${height}  /  ${fps} FPS  /  SPECTRA`}
+          {`${width} × ${height}  /  ${fps} FPS`}
         </div>
       </div>
     </AbsoluteFill>

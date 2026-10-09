@@ -45,6 +45,7 @@ export const spectraCompositionSchema = trackSchema.extend({
   trackNumber: z.number().optional(),
   genre: z.string().optional(),
   bpm: z.number().optional(),
+  composer: z.string().optional(),
   audioInfo: spectraAudioInfoSchema.optional(),
   /** 界面配色。不填时按封面自动生成；填了就用填的。 */
   theme: spectraThemeSchema.optional(),
@@ -73,7 +74,10 @@ export type TrackProps = Omit<z.infer<typeof trackSchema>, "lyricLines"> & {
 
 export type PlayerCompositionProps = TrackProps;
 
-export type SpectraCompositionProps = Omit<z.infer<typeof spectraCompositionSchema>, "lyricLines"> & {
+export type SpectraCompositionProps = Omit<
+  z.infer<typeof spectraCompositionSchema>,
+  "lyricLines"
+> & {
   lyricLines?: LyricLine[];
 };
 

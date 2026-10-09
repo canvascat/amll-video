@@ -95,7 +95,9 @@ export const calculateAlbumMetadata: CalculateMetadataFunction<
   }
 
   let tracks = props.tracks;
-  const missingEnd = tracks.some((track) => !hasPositiveDuration(track.audioEndInSeconds));
+  const missingEnd = tracks.some(
+    (track) => !hasPositiveDuration(track.audioEndInSeconds),
+  );
   if (missingEnd) {
     const input = new Input({
       source: new UrlSource(props.audioFileUrl),
@@ -147,7 +149,7 @@ export const calculateSpectraMetadata: CalculateMetadataFunction<
     track.audioEndInSeconds,
   );
 
-  let { audioInfo, year, trackNumber, genre, bpm } = props;
+  let { audioInfo, year, trackNumber, genre, bpm, composer } = props;
   // 技术参数缺项（或还没有包络）时，从音频文件本身读取；读不到就留空，界面显示 “—”
   if (!audioInfo?.peaks?.length) {
     const loaded = await loadSpectraAudioInfo(
@@ -164,17 +166,30 @@ export const calculateSpectraMetadata: CalculateMetadataFunction<
       trackNumber = trackNumber ?? loaded.tags.trackNumber;
       genre = genre ?? loaded.tags.genre;
       bpm = bpm ?? loaded.tags.bpm;
+      composer = composer ?? loaded.tags.composer;
     }
   }
 
   let theme = props.theme;
   if (!theme && props.themeFromCover !== false) {
-    theme = (await loadCoverTheme(resolvePublicAsset(track.coverImageUrl))) ?? undefined;
+    theme =
+      (await loadCoverTheme(resolvePublicAsset(track.coverImageUrl))) ??
+      undefined;
   }
 
   return {
     fps: DEFAULT_FPS,
     durationInFrames: Math.max(1, durationInFrames),
-    props: { ...props, ...track, audioInfo, year, trackNumber, genre, bpm, theme },
+    props: {
+      ...props,
+      ...track,
+      audioInfo,
+      year,
+      trackNumber,
+      genre,
+      bpm,
+      composer,
+      theme,
+    },
   };
 };
