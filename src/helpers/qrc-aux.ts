@@ -97,6 +97,9 @@ export function alignRomanization(
   }
   let searchFrom = 0;
   for (const main of mainWords) {
+    if (!main.word.trim()) {
+      continue;
+    }
     const syllables: string[] = [];
     let romanIndex = searchFrom;
     let fallbackIndex = -1;

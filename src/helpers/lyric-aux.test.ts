@@ -29,6 +29,20 @@ test("QRC 的中文挂到整行，罗马音挂到每个字", () => {
   assert.equal(lines[1]?.words[0]?.romanWord, undefined);
 });
 
+const QRC_ZERO_SPACE = `[135838,3686]う(137036,448) (137484,0)背(137484,176)
+[rmv-roman]
+[135837,3686]u (137035,447)  (137483,0)se (137483,176)
+`;
+
+test("零时长空格不抢走紧挨着的罗马音", () => {
+  const lines = parseLyricText(QRC_ZERO_SPACE, "qrc");
+  const words = lines[0]?.words ?? [];
+  const space = words.find((word) => word.word === " ");
+  const back = words.find((word) => word.word === "背");
+  assert.equal(space?.romanWord, undefined);
+  assert.equal(back?.romanWord, "se");
+});
+
 test("QRC 的 kana 注音只挂到汉字上", () => {
   const lines = parseLyricText(KANA_QRC, "qrc");
   assert.equal(lines[0]?.words[0]?.ruby?.[0]?.word, "かい");
